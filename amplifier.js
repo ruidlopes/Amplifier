@@ -15,6 +15,23 @@ var namespace = function(ns) {
 }
 
 
+// Micro inter-object messaging.
+namespace('lib.msg');
+
+lib.msg.listeners_ = {};
+lib.msg.listen = function(msg, callback) {
+  lib.msg.listeners_[msg] = lib.msg.listeners_[msg] || [];
+  lib.msg.listeners_[msg].push(callback);
+};
+lib.msg.send = function(msg) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  var listeners = lib.msg.listeners_[msg];
+  for (var i in listeners) {
+    listeners[i].apply(this, args);
+  }
+};
+
+
 // Amplifier namespaces.
 namespace('amplifier.audio');
 namespace('amplifier.audio.input');
@@ -23,6 +40,7 @@ namespace('amplifier.core');
 namespace('amplifier.ui');
 namespace('amplifier.ui.constants');
 namespace('amplifier.ui.chalk');
+namespace('amplifier.ui.events');
 namespace('amplifier.ui.Knob');
 namespace('amplifier.ui.Switch');
 
@@ -63,6 +81,7 @@ amplifier.audio.nodes = [];
 amplifier.audio.init = function() {
   amplifier.audio.context = new window.webkitAudioContext();
   amplifier.audio.initNodes();
+  amplifier.audio.bindListeners();
 };
 
 
@@ -75,6 +94,20 @@ amplifier.audio.initNodes = function() {
 
   var lastNode = amplifier.audio.nodes[amplifier.audio.nodes.length - 1];
   lastNode.connect(amplifier.audio.context.destination);
+};
+
+
+/**
+ * Binds message listeners.
+ */
+amplifier.audio.bindListeners = function() {
+  var switchListeners = {
+    'POWER': amplifier.audio.power,
+    'SOUND': amplifier.audio.sound
+  };
+  lib.msg.listen('SWITCH_STATE', function(id, state) {
+    switchListeners[id](state);
+  });
 };
 
 
@@ -205,13 +238,54 @@ amplifier.ui.context;
 
 
 /**
+ * The UI canvas background color.
+ * @type {string}
+ */
+amplifier.ui.background = '#181818';
+
+
+/**
+ * The UI power switch.
+ * @type {amplifier.ui.Switch}
+ * @private
+ */
+amplifier.ui.powerSwitch_;
+
+
+/**
+ * The UI sound switch (standby/on).
+ * @type {amplifier.ui.Switch}
+ * @private
+ */
+amplifier.ui.soundSwitch_;
+
+
+/**
  * Initializes the UI.
  */
 amplifier.ui.init = function() {
   amplifier.ui.canvas = document.getElementById('amplifier-canvas');
   amplifier.ui.context = amplifier.ui.canvas.getContext('2d');
+
   amplifier.ui.chalk.init();
-  amplifier.ui.reflow();
+  amplifier.ui.clear();
+
+  var switchX = amplifier.ui.constants.borderSize * 2 + 50;
+  amplifier.ui.powerSwitch_ = new amplifier.ui.Switch(switchX, 'POWER', ['POWER', 'ON']);
+  amplifier.ui.soundSwitch_ = new amplifier.ui.Switch(switchX + 150, 'SOUND', ['STANDBY', 'ON']);
+
+  amplifier.ui.redraw();
+};
+
+
+/**
+ * Clears the canvas.
+ */
+amplifier.ui.clear = function() {
+  amplifier.ui.canvas.width = document.width;
+  amplifier.ui.canvas.height = document.height;
+  amplifier.ui.context.fillStyle = amplifier.ui.background;
+  amplifier.ui.context.fillRect(0, 0, amplifier.ui.canvas.width, amplifier.ui.canvas.height);
 };
 
 
@@ -219,10 +293,7 @@ amplifier.ui.init = function() {
  * Reflows the canvas.
  */
 amplifier.ui.reflow = function() {
-  amplifier.ui.canvas.width = document.width;
-  amplifier.ui.canvas.height = document.height;
-  amplifier.ui.context.fillStyle = '#181818';
-  amplifier.ui.context.fillRect(0, 0, amplifier.ui.canvas.width, amplifier.ui.canvas.height);
+  amplifier.ui.clear();
   amplifier.ui.redraw();
 };
 
@@ -295,8 +366,8 @@ amplifier.ui.redrawSwitches = function() {
   var switchX = amplifier.ui.constants.borderSize * 2 + 50;
   var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var switchDelta = 150;
-  amplifier.ui.redrawSwitch(switchX, switchY, ['POWER', 'ON'], true);
-  amplifier.ui.redrawSwitch(switchX + switchDelta, switchY, ['STANDBY', 'ON'], false);
+  amplifier.ui.powerSwitch_.render();
+  amplifier.ui.soundSwitch_.render();
 
   var x = amplifier.ui.constants.borderSize - 15;
   var w = amplifier.ui.canvas.width - x;
@@ -452,6 +523,67 @@ amplifier.ui.chalk.roundRect = function(x1, y1, w, h, r, lineWidth) {
   amplifier.ui.chalk.line(x1 + r, y2, x2 - r, y2, lineWidth);
   amplifier.ui.chalk.arc(x2 - r, y2 - r, r, Math.PI / 2, 0, lineWidth);
 };
+
+
+
+/**
+ * A generic switch.
+ * @type {Number} x The horizontal location for this switch.
+ * @type {Number} id Identifier for this switch.
+ * @type {!Array.<string>} labels The labels for this switch.
+ * @constructor
+ */
+amplifier.ui.Switch = function(x, id, labels) {
+  /**
+   * The switch state.
+   * @type {boolean}
+   * @private
+   */
+  this.state_ = false;
+
+  /**
+   * @type {Number}
+   * @private
+   */
+  this.x_ = x;
+
+  /**
+   * @type {Number}
+   * @private
+   */
+  this.id_ = id;
+
+  /**
+   * @type {!Array.<string>}
+   * @private
+   */
+  this.labels_ = labels;
+};
+
+
+/**
+ * Sets the state for this switch.
+ * @type {boolean} newState The new state.
+ */
+amplifier.ui.Switch.prototype.setState = function(newState) {
+  this.state_ = newState;
+  amplifier.ui.redraw();
+  lib.msg.send('SWITCH_STATE', this.id_, newState);
+};
+
+
+/**
+ * Renders this switch.
+ */
+amplifier.ui.Switch.prototype.render = function() {
+  var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  amplifier.ui.redrawGenericKnob(this.x_, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
+  amplifier.ui.chalk.text(
+      this.labels_[0], this.x_, switchY + 80, '12pt sans-serif', 'center', 'middle');
+  amplifier.ui.chalk.text(
+      this.labels_[1], this.x_, switchY - 80, '12pt sans-serif', 'center', 'middle');
+};
+
 
 // Bind all global events, kicking core initialization on window load.
 window.addEventListener('load', amplifier.core.init);
