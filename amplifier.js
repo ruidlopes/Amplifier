@@ -290,18 +290,10 @@ amplifier.ui.clear = function() {
 
 
 /**
- * Reflows the canvas.
- */
-amplifier.ui.reflow = function() {
-  amplifier.ui.clear();
-  amplifier.ui.redraw();
-};
-
-
-/**
  * Redraws the UI.
  */
 amplifier.ui.redraw = function() {
+  amplifier.ui.clear();
   amplifier.ui.redrawBorder();
   amplifier.ui.redrawGrid();
   amplifier.ui.redrawLogo();
@@ -525,6 +517,33 @@ amplifier.ui.chalk.roundRect = function(x1, y1, w, h, r, lineWidth) {
 };
 
 
+amplifier.ui.events.handlersQuads_ = {};
+amplifier.ui.events.handlers_ = {};
+
+amplifier.ui.events.globalHandler = function(event) {
+  for (var id in amplifier.ui.events.handlersQuads_) {
+    var quad = amplifier.ui.events.handlersQuads_[id];
+    if (event.clientX >= quad[0] && event.clientY >= quad[1] &&
+        event.clientX <= quad[2] && event.clientY <= quad[3]) {
+      var typeHandler = amplifier.ui.events.handlers_[event.type];
+      if (typeHandler && typeHandler[id]) {
+        typeHandler[id]();
+      }
+      break;
+    }
+  }
+};
+
+amplifier.ui.events.addHandler = function(type, id, x, y, w, h, handler) {
+  amplifier.ui.events.handlers_[type] = amplifier.ui.events.handlers_[type] || {};
+  amplifier.ui.events.handlers_[type][id] = handler;
+  amplifier.ui.events.reflowHandler(id, x, y, x + w, y + h);
+};
+
+amplifier.ui.events.reflowHandler = function(id, x, y, w, h) {
+  amplifier.ui.events.handlersQuads_[id] = [x, y, w, h];
+};
+
 
 /**
  * A generic switch.
@@ -576,7 +595,11 @@ amplifier.ui.Switch.prototype.setState = function(newState) {
  * Renders this switch.
  */
 amplifier.ui.Switch.prototype.render = function() {
+  var switchX = this.x_;
   var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  var switchSize =  50;
+  amplifier.ui.events.addHandler(
+      'click', this.id_, switchX - 50, switchY - 50, 100, 100, this.handleClick.bind(this));
   amplifier.ui.redrawGenericKnob(this.x_, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
   amplifier.ui.chalk.text(
       this.labels_[0], this.x_, switchY + 80, '12pt sans-serif', 'center', 'middle');
@@ -585,7 +608,17 @@ amplifier.ui.Switch.prototype.render = function() {
 };
 
 
+/**
+ * Handlers a click on this switch.
+ */
+amplifier.ui.Switch.prototype.handleClick = function() {
+  this.setState(!this.state_);
+};
+
+
 // Bind all global events, kicking core initialization on window load.
 window.addEventListener('load', amplifier.core.init);
 window.addEventListener('unload', amplifier.core.dispose);
-window.addEventListener('resize', amplifier.ui.reflow);
+window.addEventListener('resize', amplifier.ui.redraw);
+
+window.addEventListener('click', amplifier.ui.events.globalHandler);
