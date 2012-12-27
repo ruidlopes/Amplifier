@@ -292,6 +292,16 @@ amplifier.ui.redrawKnob = function(x, y, label, value) {
   var angle = Math.PI * 0.75 + value * Math.PI * 1.5;
   amplifier.ui.redrawGenericKnob(x, y, angle);
   amplifier.ui.chalk.text(label, x, y + 80, '12pt sans-serif', 'center', 'middle');
+
+  for (var valueLabel = 1; valueLabel < 12; ++valueLabel) {
+    var currentLabel = valueLabel.toString();
+    var currentAngle = Math.PI * 0.75 + (valueLabel - 1) * Math.PI * 0.15;
+    var distance = 65;
+    var currentLabelX = x + Math.cos(currentAngle) * distance;
+    var currentLabelY = y + Math.sin(currentAngle) * distance;
+    amplifier.ui.chalk.text(
+        currentLabel, currentLabelX, currentLabelY, '10pt sans-serif', 'center', 'middle');
+  }
 };
 
 amplifier.ui.redrawKnobs = function() {
