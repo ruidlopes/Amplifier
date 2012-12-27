@@ -559,9 +559,9 @@ amplifier.ui.events.globalHandler = function(event) {
   }
 };
 
-amplifier.ui.events.addHandler = function(type, id, x, y, w, h, handler) {
+amplifier.ui.events.setHandler = function(type, id, x, y, w, h, handler) {
   amplifier.ui.events.handlers_[type] = amplifier.ui.events.handlers_[type] || {};
-  amplifier.ui.events.handlers_[type][id] = handler;
+  amplifier.ui.events.handlers_[type][id] = amplifier.ui.events.handlers_[type][id] || handler;
   amplifier.ui.events.reflowHandler(id, x, y, x + w, y + h);
 };
 
@@ -636,7 +636,7 @@ amplifier.ui.Switch.prototype.render = function() {
   var switchX = this.x_;
   var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var switchSize =  50;
-  amplifier.ui.events.addHandler(
+  amplifier.ui.events.setHandler(
       'click', this.id_, switchX - 50, switchY - 50, 100, 100, this.handleClick.bind(this));
   amplifier.ui.redrawGenericKnob(switchX, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
   amplifier.ui.chalk.text(
