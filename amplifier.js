@@ -271,19 +271,19 @@ amplifier.ui.background = '#181818';
 
 
 /**
- * The UI power switch.
- * @type {amplifier.ui.Switch}
+ * The UI switches.
+ * @type {!Array.<!amplifier.ui.Switch>}
  * @private
  */
-amplifier.ui.powerSwitch_;
+amplifier.ui.switches_ = [];
 
 
 /**
- * The UI sound switch (standby/on).
- * @type {amplifier.ui.Switch}
+ * The UI knobs.
+ * @type {!Array.<!amplifier.ui.Knob>}
  * @private
  */
-amplifier.ui.soundSwitch_;
+amplifier.ui.knobs_ = [];
 
 
 /**
@@ -297,9 +297,17 @@ amplifier.ui.init = function() {
   amplifier.ui.resizeCanvas();
 
   var switchX = amplifier.ui.constants.borderSize * 2 + 50;
-  amplifier.ui.powerSwitch_ = new amplifier.ui.Switch(switchX, 'POWER', ['POWER', 'ON']);
-  amplifier.ui.soundSwitch_ = new amplifier.ui.Switch(switchX + 150, 'SOUND', ['STANDBY', 'ON']);
+  amplifier.ui.switches_.push(new amplifier.ui.Switch(switchX, 'POWER', ['POWER', 'ON']));
+  amplifier.ui.switches_.push(new amplifier.ui.Switch(switchX + 150, 'SOUND', ['STANDBY', 'ON']));
 
+  var knobX = amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50;
+  var knobDelta = 150;
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 5, 0.0, 'VOLUME', 'VOLUME'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 3, 0.5, 'BASS', 'BASS'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 2, 0.6, 'MIDDLE', 'MIDDLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta, 0.8, 'TREBLE', 'TREBLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX, 0.4, 'REVERB', 'REVERB'));
   amplifier.ui.redraw();
 };
 
@@ -384,51 +392,25 @@ amplifier.ui.redrawGenericKnob = function(x, y, angle) {
   amplifier.ui.chalk.lineAngle(x, y, 70, angle);
 };
 
-amplifier.ui.redrawSwitch = function(x, y, labels, state) {
-  amplifier.ui.redrawGenericKnob(x, y, (state ? -1 : 1) * Math.PI / 2);
-  amplifier.ui.chalk.text(labels[0], x, y + 80, '12pt sans-serif', 'center', 'middle');
-  amplifier.ui.chalk.text(labels[1], x, y - 80, '12pt sans-serif', 'center', 'middle');
-};
-
 amplifier.ui.redrawSwitches = function() {
+  for (var i = 0; i < amplifier.ui.switches_.length; ++i) {
+    amplifier.ui.switches_[i].render();
+  }
+
   var switchX = amplifier.ui.constants.borderSize * 2 + 50;
   var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
-  var switchDelta = 150;
-  amplifier.ui.powerSwitch_.render();
-  amplifier.ui.soundSwitch_.render();
-
   var x = amplifier.ui.constants.borderSize - 15;
   var w = amplifier.ui.canvas.width - x;
   amplifier.ui.chalk.line(x, switchY, w, switchY, 1);
-};
-
-amplifier.ui.redrawKnob = function(x, y, label, value) {
-  value = value > 1 ? 1 : value < 0 ? 0 : value;
-  var angle = Math.PI * 0.75 + value * Math.PI * 1.5;
-  amplifier.ui.redrawGenericKnob(x, y, angle);
-  amplifier.ui.chalk.text(label, x, y + 80, '12pt sans-serif', 'center', 'middle');
-
-  for (var valueLabel = 1; valueLabel < 12; ++valueLabel) {
-    var currentLabel = valueLabel.toString();
-    var currentAngle = Math.PI * 0.75 + (valueLabel - 1) * Math.PI * 0.15;
-    var distance = 65;
-    var currentLabelX = x + Math.cos(currentAngle) * distance;
-    var currentLabelY = y + Math.sin(currentAngle) * distance;
-    amplifier.ui.chalk.text(
-        currentLabel, currentLabelX, currentLabelY, '10pt sans-serif', 'center', 'middle');
-  }
 };
 
 amplifier.ui.redrawKnobs = function() {
   var knobX = amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50;
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var knobDelta = 150;
-  amplifier.ui.redrawKnob(knobX - knobDelta * 5, knobY, 'VOLUME', 0);
-  amplifier.ui.redrawKnob(knobX - knobDelta * 4, knobY, 'DISTORTION', 1.0);
-  amplifier.ui.redrawKnob(knobX - knobDelta * 3, knobY, 'BASS', 0.5);
-  amplifier.ui.redrawKnob(knobX - knobDelta * 2, knobY, 'MIDDLE', 0.6);
-  amplifier.ui.redrawKnob(knobX - knobDelta, knobY, 'TREBLE', 0.8);
-  amplifier.ui.redrawKnob(knobX, knobY, 'REVERB', 0.4);
+  for (var i = 0; i < amplifier.ui.knobs_.length; ++i) {
+    amplifier.ui.knobs_[i].render();
+  }
 };
 
 
@@ -584,7 +566,7 @@ amplifier.ui.events.reflowHandler = function(id, x, y, w, h) {
 /**
  * A generic switch.
  * @type {Number} x The horizontal location for this switch.
- * @type {Number} id Identifier for this switch.
+ * @type {string} id Identifier for this switch.
  * @type {!Array.<string>} labels The labels for this switch.
  * @constructor
  */
@@ -603,7 +585,7 @@ amplifier.ui.Switch = function(x, id, labels) {
   this.x_ = x;
 
   /**
-   * @type {Number}
+   * @type {string}
    * @private
    */
   this.id_ = id;
@@ -649,11 +631,11 @@ amplifier.ui.Switch.prototype.render = function() {
   var switchSize =  50;
   amplifier.ui.events.addHandler(
       'click', this.id_, switchX - 50, switchY - 50, 100, 100, this.handleClick.bind(this));
-  amplifier.ui.redrawGenericKnob(this.x_, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
+  amplifier.ui.redrawGenericKnob(switchX, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
   amplifier.ui.chalk.text(
-      this.labels_[0], this.x_, switchY + 80, '12pt sans-serif', 'center', 'middle');
+      this.labels_[0], switchX, switchY + 80, '12pt sans-serif', 'center', 'middle');
   amplifier.ui.chalk.text(
-      this.labels_[1], this.x_, switchY - 80, '12pt sans-serif', 'center', 'middle');
+      this.labels_[1], switchX, switchY - 80, '12pt sans-serif', 'center', 'middle');
 };
 
 
@@ -664,6 +646,64 @@ amplifier.ui.Switch.prototype.handleClick = function() {
   this.setState(!this.state_);
 };
 
+
+
+/**
+ * A generic knob.
+ * @type {Number} x The horizontal location for this switch.
+ * @type {number} value The initial value for this knob.
+ * @type {string} id Identifier for this switch.
+ * @type {string} label The labels for this switch.
+ * @constructor
+ */
+amplifier.ui.Knob = function(x, value, id, label) {
+  /**
+   * @type {Number}
+   * @private
+   */
+  this.value_ = value;
+
+  /**
+   * @type {Number}
+   * @private
+   */
+  this.x_ = x;
+
+  /**
+   * @type {string}
+   * @private
+   */
+  this.id_ = id;
+
+  /**
+   * @type {string}
+   * @private
+   */
+  this.label_ = label;
+};
+
+
+/**
+ * Renders this knob.
+ */
+amplifier.ui.Knob.prototype.render = function() {
+  var knobX = this.x_;
+  var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  var knobSize = 50;
+  var value = this.value_ > 1 ? 1 : this.value_ < 0 ? 0 : this.value_;
+  var angle = Math.PI * 0.75 + this.value_ * Math.PI * 1.5;
+  amplifier.ui.redrawGenericKnob(knobX, knobY, angle);
+  amplifier.ui.chalk.text(this.label_, knobX, knobY + 80, '12pt sans-serif', 'center', 'middle');
+
+  for (var valueLabel = 1; valueLabel < 12; ++valueLabel) {
+    var currentLabel = valueLabel.toString();
+    var currentAngle = Math.PI * 0.75 + (valueLabel - 1) * Math.PI * 0.15;
+    var distance = 65;
+    var currentLabelX = knobX + Math.cos(currentAngle) * distance;
+    var currentLabelY = knobY + Math.sin(currentAngle) * distance;
+    amplifier.ui.chalk.text(
+        currentLabel, currentLabelX, currentLabelY, '10pt sans-serif', 'center', 'middle');
+  }};
 
 // Bind all global events, kicking core initialization on window load.
 window.addEventListener('load', amplifier.core.init);
