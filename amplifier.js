@@ -238,6 +238,18 @@ amplifier.audio.volume.getValue = function() {
 
 
 /**
+ * window.requestAnimationFrame poly.
+ * @type {Function}
+ * @private
+ */
+amplifier.ui.requestAnimationFrame_ =
+    window.requestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.webkitRequestAnimationFrame ||
+    window.msRequestAnimationFrame;
+
+
+/**
  * The UI canvas element.
  * @type {HTMLCanvasElement}
  */
@@ -282,7 +294,7 @@ amplifier.ui.init = function() {
   amplifier.ui.context = amplifier.ui.canvas.getContext('2d');
 
   amplifier.ui.chalk.init();
-  amplifier.ui.clear();
+  amplifier.ui.resizeCanvas();
 
   var switchX = amplifier.ui.constants.borderSize * 2 + 50;
   amplifier.ui.powerSwitch_ = new amplifier.ui.Switch(switchX, 'POWER', ['POWER', 'ON']);
@@ -293,11 +305,19 @@ amplifier.ui.init = function() {
 
 
 /**
+ * Resize the canvas to fit the whole document.
+ */
+amplifier.ui.resizeCanvas = function() {
+  amplifier.ui.canvas.width = document.width;
+  amplifier.ui.canvas.height = document.height;
+};
+
+
+/**
  * Clears the canvas.
  */
 amplifier.ui.clear = function() {
-  amplifier.ui.canvas.width = document.width;
-  amplifier.ui.canvas.height = document.height;
+  amplifier.ui.resizeCanvas();
   amplifier.ui.context.fillStyle = amplifier.ui.background;
   amplifier.ui.context.fillRect(0, 0, amplifier.ui.canvas.width, amplifier.ui.canvas.height);
 };
@@ -307,12 +327,14 @@ amplifier.ui.clear = function() {
  * Redraws the UI.
  */
 amplifier.ui.redraw = function() {
-  amplifier.ui.clear();
-  amplifier.ui.redrawBorder();
-  amplifier.ui.redrawGrid();
-  amplifier.ui.redrawLogo();
-  amplifier.ui.redrawSwitches();
-  amplifier.ui.redrawKnobs();
+  amplifier.ui.requestAnimationFrame_.call(window, function() {
+    amplifier.ui.clear();
+    amplifier.ui.redrawBorder();
+    amplifier.ui.redrawGrid();
+    amplifier.ui.redrawLogo();
+    amplifier.ui.redrawSwitches();
+    amplifier.ui.redrawKnobs();
+  });
 };
 
 amplifier.ui.constants.borderSize = 50;
