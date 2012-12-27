@@ -266,6 +266,9 @@ amplifier.ui.redrawLogo = function() {
   var logoY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight - 25;
   amplifier.ui.chalk.text('Amplifier', logoX, logoY, 'italic 50pt serif');
   amplifier.ui.chalk.text('by Rui Lopes', logoX + 260, logoY, 'italic 13pt serif');
+  var x = amplifier.ui.constants.borderSize - 15;
+  var w = amplifier.ui.canvas.width - x;
+  amplifier.ui.chalk.line(x, logoY, w, logoY, 1);
 };
 
 amplifier.ui.redrawGenericKnob = function(x, y, angle) {
@@ -285,6 +288,10 @@ amplifier.ui.redrawSwitches = function() {
   var switchDelta = 150;
   amplifier.ui.redrawSwitch(switchX, switchY, ['POWER', 'ON'], true);
   amplifier.ui.redrawSwitch(switchX + switchDelta, switchY, ['STANDBY', 'ON'], false);
+
+  var x = amplifier.ui.constants.borderSize - 15;
+  var w = amplifier.ui.canvas.width - x;
+  amplifier.ui.chalk.line(x, switchY, w, switchY, 1);
 };
 
 amplifier.ui.redrawKnob = function(x, y, label, value) {
