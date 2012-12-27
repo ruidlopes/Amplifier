@@ -111,14 +111,18 @@ amplifier.audio.bindListeners = function() {
     'SOUND': amplifier.audio.sound
   };
   lib.msg.listen('SWITCH_STATE', function(id, state) {
-    switchListeners[id](state);
+    if (switchListeners[id]) {
+      switchListeners[id](state);
+    }
   });
 
   var knobListeners = {
     'VOLUME': amplifier.audio.volume.setValue
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
-    knobListeners[id](value);
+    if (knobListeners[id]) {
+      knobListeners[id](value);
+    }
   });
 };
 
@@ -202,7 +206,7 @@ amplifier.audio.input.disconnect = function() {
 amplifier.audio.volume.node = null;
 
 amplifier.audio.volume.on = false;
-amplifier.audio.volume.value = 0.7;
+amplifier.audio.volume.value = 0.0;
 
 
 /**
@@ -635,14 +639,17 @@ amplifier.ui.Switch.prototype.handleFailure = function(id) {
 amplifier.ui.Switch.prototype.render = function() {
   var switchX = this.x_;
   var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
-  var switchSize =  50;
-  amplifier.ui.events.setHandler(
-      'click', this.id_, switchX - 50, switchY - 50, 100, 100, this.handleClick.bind(this));
+  var switchRadius = 50;
   amplifier.ui.redrawGenericKnob(switchX, switchY, (this.state_ ? -1 : 1) * Math.PI / 2);
   amplifier.ui.chalk.text(
       this.labels_[0], switchX, switchY + 80, '12pt sans-serif', 'center', 'middle');
   amplifier.ui.chalk.text(
       this.labels_[1], switchX, switchY - 80, '12pt sans-serif', 'center', 'middle');
+
+  amplifier.ui.events.setHandler(
+      'click', this.id_,
+      switchX - switchRadius, switchY - switchRadius, switchRadius * 2, switchRadius * 2,
+      this.handleClick.bind(this));
 };
 
 
@@ -703,7 +710,7 @@ amplifier.ui.Knob.prototype.setValue = function(newValue) {
 amplifier.ui.Knob.prototype.render = function() {
   var knobX = this.x_;
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
-  var knobSize = 50;
+  var knobRadius = 50;
   var angle = Math.PI * 0.75 + this.value_ * Math.PI * 1.5;
   amplifier.ui.redrawGenericKnob(knobX, knobY, angle);
   amplifier.ui.chalk.text(this.label_, knobX, knobY + 80, '12pt sans-serif', 'center', 'middle');
@@ -711,13 +718,28 @@ amplifier.ui.Knob.prototype.render = function() {
   for (var valueLabel = 1; valueLabel < 12; ++valueLabel) {
     var currentLabel = valueLabel.toString();
     var currentAngle = Math.PI * 0.75 + (valueLabel - 1) * Math.PI * 0.15;
-    var distance = 65;
+    var distance = knobRadius + 15;
     var currentLabelX = knobX + Math.cos(currentAngle) * distance;
     var currentLabelY = knobY + Math.sin(currentAngle) * distance;
     amplifier.ui.chalk.text(
         currentLabel, currentLabelX, currentLabelY, '10pt sans-serif', 'center', 'middle');
   }
+
+  amplifier.ui.events.setHandler(
+      'click', this.id_,
+      knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2,
+      this.handleClick.bind(this));
 };
+
+
+/**
+ * Handles a click on this knob.
+ */
+amplifier.ui.Knob.prototype.handleClick = function() {
+  var nextValue = Math.floor((this.value_ * 10 + 1) % 11) / 10;
+  this.setValue(nextValue);
+};
+
 
 // Bind all global events, kicking core initialization on window load.
 window.addEventListener('load', amplifier.core.init);
