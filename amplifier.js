@@ -78,20 +78,29 @@ amplifier.audio.initNodes = function() {
 };
 
 
-amplifier.audio.powerOn = function() {
-  amplifier.audio.input.connect();
+/**
+ * Turns on/off the amplifier power.  It requests for an input source if nothing connected yet.
+ * @param {boolean} state The desired amplifier power state.
+ */
+amplifier.audio.power = function(state) {
+  if (state) {
+    amplifier.audio.input.connect();
+  } else {
+    amplifier.audio.input.disconnect();
+  }
 };
 
-amplifier.audio.powerOff = function() {
-  amplifier.audio.input.disconnect();
-};
 
-amplifier.audio.standbyOn = function() {
-  amplifier.audio.volume.turnOff();
-};
-
-amplifier.audio.standbyOff = function() {
-  amplifier.audio.volume.turnOn();
+/**
+ * Turns on/off the amplifier sound.
+ * @param {boolean} state The desired amplifier sound state.
+ */
+amplifier.audio.sound = function(state) {
+  if (state) {
+    amplifier.audio.volume.turnOn();
+  } else {
+    amplifier.audio.volume.turnOff();
+  }
 };
 
 
