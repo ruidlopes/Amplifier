@@ -79,7 +79,12 @@ amplifier.audio.nodes = [];
  * Initializes audio.
  */
 amplifier.audio.init = function() {
-  amplifier.audio.context = new window.webkitAudioContext();
+  var audioContext = window.webkitAudioContext || window.mozAudioContext;
+  if (audioContext) {
+    amplifier.audio.context = new audioContext();
+  } else {
+    throw Error('WebAudio API not implemented. Please use a modern browser.');
+  }
   amplifier.audio.initNodes();
   amplifier.audio.bindListeners();
 };
@@ -148,15 +153,17 @@ amplifier.audio.getDestinationForInput = function() {
 /**
  * The input stream source.
  */
-amplifier.audio.input.streamSource;
+amplifier.audio.input.streamSource = null;
 
 
 /**
  */
-amplifier.audio.input.connect = function(errorCallback) {
+amplifier.audio.input.connect = function() {
   if (!amplifier.audio.input.streamSource) {
     navigator.webkitGetUserMedia(
-        {audio: true, video: false}, amplifier.audio.input.successCallback, errorCallback);
+        {audio: true, video: false},
+        amplifier.audio.input.successCallback,
+        amplifier.audio.input.errorCallback);
   } else {
     amplifier.audio.input.streamSource.connect(amplifier.audio.getDestinationForInput());
   }
@@ -168,6 +175,13 @@ amplifier.audio.input.connect = function(errorCallback) {
 amplifier.audio.input.successCallback = function(stream) {
   amplifier.audio.input.streamSource = amplifier.audio.context.createMediaStreamSource(stream);
   amplifier.audio.input.streamSource.connect(amplifier.audio.getDestinationForInput());
+};
+
+
+/**
+ */
+amplifier.audio.input.errorCallback = function() {
+  lib.msg.send('SWITCH_FAILURE', 'POWER');
 };
 
 
@@ -577,6 +591,8 @@ amplifier.ui.Switch = function(x, id, labels) {
    * @private
    */
   this.labels_ = labels;
+
+  lib.msg.listen('SWITCH_FAILURE', this.handleFailure.bind(this));
 };
 
 
@@ -588,6 +604,17 @@ amplifier.ui.Switch.prototype.setState = function(newState) {
   this.state_ = newState;
   amplifier.ui.redraw();
   lib.msg.send('SWITCH_STATE', this.id_, newState);
+};
+
+
+/**
+ * Handles a failure on toggling this switch.
+ */
+amplifier.ui.Switch.prototype.handleFailure = function(id) {
+  if (id == this.id_) {
+    this.state_ = false;
+    amplifier.ui.redraw();
+  }
 };
 
 
