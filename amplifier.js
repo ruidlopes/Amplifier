@@ -113,6 +113,13 @@ amplifier.audio.bindListeners = function() {
   lib.msg.listen('SWITCH_STATE', function(id, state) {
     switchListeners[id](state);
   });
+
+  var knobListeners = {
+    'VOLUME': amplifier.audio.volume.setValue
+  };
+  lib.msg.listen('KNOB_VALUE', function(id, value) {
+    knobListeners[id](value);
+  });
 };
 
 
@@ -605,9 +612,9 @@ amplifier.ui.Switch = function(x, id, labels) {
  * @type {boolean} newState The new state.
  */
 amplifier.ui.Switch.prototype.setState = function(newState) {
-  this.state_ = newState;
+  this.state_ = !!newState;
   amplifier.ui.redraw();
-  lib.msg.send('SWITCH_STATE', this.id_, newState);
+  lib.msg.send('SWITCH_STATE', this.id_, this.state_);
 };
 
 
@@ -683,6 +690,13 @@ amplifier.ui.Knob = function(x, value, id, label) {
 };
 
 
+amplifier.ui.Knob.prototype.setValue = function(newValue) {
+  this.value_ = Math.max(0.0, Math.min(1.0, newValue));
+  amplifier.ui.redraw();
+  lib.msg.send('KNOB_VALUE', this.id_, this.value_);
+};
+
+
 /**
  * Renders this knob.
  */
@@ -690,7 +704,6 @@ amplifier.ui.Knob.prototype.render = function() {
   var knobX = this.x_;
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var knobSize = 50;
-  var value = this.value_ > 1 ? 1 : this.value_ < 0 ? 0 : this.value_;
   var angle = Math.PI * 0.75 + this.value_ * Math.PI * 1.5;
   amplifier.ui.redrawGenericKnob(knobX, knobY, angle);
   amplifier.ui.chalk.text(this.label_, knobX, knobY + 80, '12pt sans-serif', 'center', 'middle');
@@ -703,7 +716,8 @@ amplifier.ui.Knob.prototype.render = function() {
     var currentLabelY = knobY + Math.sin(currentAngle) * distance;
     amplifier.ui.chalk.text(
         currentLabel, currentLabelX, currentLabelY, '10pt sans-serif', 'center', 'middle');
-  }};
+  }
+};
 
 // Bind all global events, kicking core initialization on window load.
 window.addEventListener('load', amplifier.core.init);
