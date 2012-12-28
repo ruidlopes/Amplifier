@@ -546,37 +546,51 @@ amplifier.ui.chalk.roundRect = function(x1, y1, w, h, r, lineWidth) {
 };
 
 
-amplifier.ui.events.handlersQuads_ = {};
+/**
+ * A map of bound event handlers.
+ * @type {!Object.<string, !Array.<{
+ *     within: function(number, number): boolean,
+ *     handler: function()}>
+ * }
+ */
 amplifier.ui.events.handlers_ = {};
 
+
+/**
+ * The global event handler.
+ * @type {!Event} event The event being handled.
+ */
 amplifier.ui.events.globalHandler = function(event) {
-  for (var id in amplifier.ui.events.handlersQuads_) {
-    var quad = amplifier.ui.events.handlersQuads_[id];
-    if (event.clientX >= quad[0] && event.clientY >= quad[1] &&
-        event.clientX <= quad[2] && event.clientY <= quad[3]) {
-      var typeHandler = amplifier.ui.events.handlers_[event.type];
-      if (typeHandler && typeHandler[id]) {
-        typeHandler[id]();
-      }
-      break;
+  var typeHandlers = amplifier.ui.events.handlers_[event.type];
+  for (var id in typeHandlers) {
+    var idHandler = typeHandlers[id];
+    if (idHandler && idHandler.within(event.clientX, event.clientY)) {
+      idHandler.handler();
     }
   }
 };
 
-amplifier.ui.events.setHandler = function(type, id, x, y, w, h, handler) {
+
+/**
+ * Sets an event handler for a given id.
+ * @param {string} type The event type to be handled.
+ * @param {string} id The id being handled.
+ * @param {function(number, number): boolean} within A 2D bound checking function.
+ * @param {function()} handler The handler to be invoked.
+ */
+amplifier.ui.events.setHandler = function(type, id, within, handler) {
   amplifier.ui.events.handlers_[type] = amplifier.ui.events.handlers_[type] || {};
-  amplifier.ui.events.handlers_[type][id] = amplifier.ui.events.handlers_[type][id] || handler;
-  amplifier.ui.events.reflowHandler(id, x, y, x + w, y + h);
+  amplifier.ui.events.handlers_[type][id] = amplifier.ui.events.handlers_[type][id] || {
+    within: within,
+    handler: handler
+  };
 };
 
-amplifier.ui.events.reflowHandler = function(id, x, y, w, h) {
-  amplifier.ui.events.handlersQuads_[id] = [x, y, w, h];
-};
 
 
 /**
  * A generic switch.
- * @type {Number} x The horizontal location for this switch.
+ * @type {number} x The horizontal location for this switch.
  * @type {string} id Identifier for this switch.
  * @type {!Array.<string>} labels The labels for this switch.
  * @constructor
@@ -590,7 +604,7 @@ amplifier.ui.Switch = function(x, id, labels) {
   this.state_ = false;
 
   /**
-   * @type {Number}
+   * @type {number}
    * @private
    */
   this.x_ = x;
@@ -647,9 +661,24 @@ amplifier.ui.Switch.prototype.render = function() {
       this.labels_[1], switchX, switchY - 80, '12pt sans-serif', 'center', 'middle');
 
   amplifier.ui.events.setHandler(
-      'click', this.id_,
-      switchX - switchRadius, switchY - switchRadius, switchRadius * 2, switchRadius * 2,
-      this.handleClick.bind(this));
+      'click', this.id_, this.isWithin.bind(this), this.handleClick.bind(this));
+};
+
+
+/**
+ * Checks if a given position is within this switch.
+ * @param {number} x The horizontal position.
+ * @param {number} y The vertical position.
+ * @return {boolean} If position within this switch.
+ */
+amplifier.ui.Switch.prototype.isWithin = function(x, y) {
+  var switchX = this.x_;
+  var switchY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  var switchRadius = 50;
+  var xx = switchX - x;
+  var yy = switchY - y;
+  var distance = Math.sqrt(xx * xx + yy * yy);
+  return distance <= switchRadius;
 };
 
 
@@ -664,7 +693,7 @@ amplifier.ui.Switch.prototype.handleClick = function() {
 
 /**
  * A generic knob.
- * @type {Number} x The horizontal location for this switch.
+ * @type {number} x The horizontal location for this switch.
  * @type {number} value The initial value for this knob.
  * @type {string} id Identifier for this switch.
  * @type {string} label The labels for this switch.
@@ -672,13 +701,13 @@ amplifier.ui.Switch.prototype.handleClick = function() {
  */
 amplifier.ui.Knob = function(x, value, id, label) {
   /**
-   * @type {Number}
+   * @type {number}
    * @private
    */
   this.value_ = value;
 
   /**
-   * @type {Number}
+   * @type {number}
    * @private
    */
   this.x_ = x;
@@ -697,6 +726,9 @@ amplifier.ui.Knob = function(x, value, id, label) {
 };
 
 
+/**
+ * Sets the value for this knob.
+ */
 amplifier.ui.Knob.prototype.setValue = function(newValue) {
   this.value_ = Math.max(0.0, Math.min(1.0, newValue));
   amplifier.ui.redraw();
@@ -726,9 +758,24 @@ amplifier.ui.Knob.prototype.render = function() {
   }
 
   amplifier.ui.events.setHandler(
-      'click', this.id_,
-      knobX - knobRadius, knobY - knobRadius, knobRadius * 2, knobRadius * 2,
-      this.handleClick.bind(this));
+      'click', this.id_, this.isWithin.bind(this), this.handleClick.bind(this));
+};
+
+
+/**
+ * Checks if a given position is within this knob.
+ * @param {number} x The horizontal position.
+ * @param {number} y The vertical position.
+ * @return {boolean} If position within this knob.
+ */
+amplifier.ui.Knob.prototype.isWithin = function(x, y) {
+  var knobX = this.x_;
+  var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  var knobRadius = 50;
+  var xx = knobX - x;
+  var yy = knobY - y;
+  var distance = Math.sqrt(xx * xx + yy * yy);
+  return distance <= knobRadius;
 };
 
 
@@ -747,3 +794,4 @@ window.addEventListener('unload', amplifier.core.dispose);
 window.addEventListener('resize', amplifier.ui.redraw);
 
 window.addEventListener('click', amplifier.ui.events.globalHandler);
+window.addEventListener('mousedown', amplifier.ui.events.globalHandler);
