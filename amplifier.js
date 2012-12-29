@@ -239,7 +239,7 @@ amplifier.audio.volume.value = 0.0;
  * Initializes a volume node.
  */
 amplifier.audio.volume.init = function() {
-  amplifier.audio.volume.node  = amplifier.audio.context.createGain();
+  amplifier.audio.volume.node = amplifier.audio.context.createGain();
   amplifier.audio.volume.turnOff();
 };
 
@@ -269,7 +269,7 @@ amplifier.audio.volume.turnOff = function() {
 amplifier.audio.volume.setValue = function(value) {
   amplifier.audio.volume.value = value * 10;  // We convert this into a gain between 0.0 and 10.0.
   if (amplifier.audio.volume.on) {
-    amplifier.audio.volume.node.gain.value = value;
+    amplifier.audio.volume.node.gain.value = value * 10;
   }
 };
 
