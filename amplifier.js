@@ -264,9 +264,10 @@ amplifier.audio.volume.turnOff = function() {
 
 /**
  * Sets the volume value.
+ * @param {number} value The new volme value.  This must be a number between 0.0 and 1.0.
  */
 amplifier.audio.volume.setValue = function(value) {
-  amplifier.audio.volume.value = value;
+  amplifier.audio.volume.value = value * 10;  // We convert this into a gain between 0.0 and 10.0.
   if (amplifier.audio.volume.on) {
     amplifier.audio.volume.node.gain.value = value;
   }
@@ -275,7 +276,7 @@ amplifier.audio.volume.setValue = function(value) {
 
 /**
  * Gets the volume value.
- * @return {number}
+ * @return {number} The current volume.
  */
 amplifier.audio.volume.getValue = function() {
   return amplifier.audio.volume.value;
