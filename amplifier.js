@@ -176,6 +176,7 @@ amplifier.audio.input.streamSource = null;
 
 
 /**
+ * Tries connecting the audio input.
  */
 amplifier.audio.input.connect = function() {
   if (!amplifier.audio.input.streamSource) {
@@ -190,6 +191,7 @@ amplifier.audio.input.connect = function() {
 
 
 /**
+ * Creates the media stream source for the audio input.
  */
 amplifier.audio.input.successCallback = function(stream) {
   amplifier.audio.input.streamSource = amplifier.audio.context.createMediaStreamSource(stream);
@@ -198,6 +200,7 @@ amplifier.audio.input.successCallback = function(stream) {
 
 
 /**
+ * Handles audio input connect failure.
  */
 amplifier.audio.input.errorCallback = function() {
   lib.msg.send('SWITCH_FAILURE', 'POWER');
@@ -205,15 +208,30 @@ amplifier.audio.input.errorCallback = function() {
 
 
 /**
+ * Disconnects the audio input.
  */
 amplifier.audio.input.disconnect = function() {
   amplifier.audio.input.streamSource.disconnect();
 };
 
 
+/**
+ * The audio volume node.
+ * @type {GainNode}
+ */
 amplifier.audio.volume.node = null;
 
+
+/**
+ * Volume state.
+ * @type {boolean}
+ */
 amplifier.audio.volume.on = false;
+
+
+/**
+ * Volume value.
+ */
 amplifier.audio.volume.value = 0.0;
 
 
@@ -221,12 +239,13 @@ amplifier.audio.volume.value = 0.0;
  * Initializes a volume node.
  */
 amplifier.audio.volume.init = function() {
-  amplifier.audio.volume.node  = amplifier.audio.context.createGainNode();
+  amplifier.audio.volume.node  = amplifier.audio.context.createGain();
   amplifier.audio.volume.turnOff();
 };
 
 
 /**
+ * Turns the volume on.
  */
 amplifier.audio.volume.turnOn = function() {
   amplifier.audio.volume.node.gain.value = amplifier.audio.volume.value;
@@ -235,7 +254,7 @@ amplifier.audio.volume.turnOn = function() {
 
 
 /**
- *
+ * Turns the volume off.
  */
 amplifier.audio.volume.turnOff = function() {
   amplifier.audio.volume.node.gain.value = 0.0;
@@ -243,6 +262,9 @@ amplifier.audio.volume.turnOff = function() {
 };
 
 
+/**
+ * Sets the volume value.
+ */
 amplifier.audio.volume.setValue = function(value) {
   amplifier.audio.volume.value = value;
   if (amplifier.audio.volume.on) {
@@ -251,6 +273,10 @@ amplifier.audio.volume.setValue = function(value) {
 };
 
 
+/**
+ * Gets the volume value.
+ * @return {number}
+ */
 amplifier.audio.volume.getValue = function() {
   return amplifier.audio.volume.value;
 };
@@ -364,11 +390,29 @@ amplifier.ui.redraw = function() {
   });
 };
 
+
+/**
+ * Amplifier border size.
+ * @type {number}
+ */
 amplifier.ui.constants.borderSize = 50;
+
+
+/**
+ * Amplifier border radius.
+ */
 amplifier.ui.constants.radius = 50;
+
+
+/**
+ * Amplifier controls height.
+ */
 amplifier.ui.constants.controlsHeight = 250;
 
 
+/**
+ * Redraws the amplifier border.
+ */
 amplifier.ui.redrawBorder = function() {
   var r = amplifier.ui.constants.radius;
   var x = amplifier.ui.constants.borderSize;
@@ -385,6 +429,10 @@ amplifier.ui.redrawBorder = function() {
   amplifier.ui.chalk.rectWithBleed(x, y, w, h, 1, 15);
 };
 
+
+/**
+ * Redraws the amplifier grid.
+ */
 amplifier.ui.redrawGrid = function() {
   var ctx = amplifier.ui.context;
   var x = amplifier.ui.constants.borderSize + amplifier.ui.constants.radius;
@@ -396,6 +444,10 @@ amplifier.ui.redrawGrid = function() {
   amplifier.ui.chalk.rectWithBleed(x, y, w, h, 1, 15);
 };
 
+
+/**
+ * Redraws the amplifier logo.
+ */
 amplifier.ui.redrawLogo = function() {
   var logoX = amplifier.ui.constants.borderSize * 2 - 20;
   var logoY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight - 25;
@@ -406,11 +458,19 @@ amplifier.ui.redrawLogo = function() {
   amplifier.ui.chalk.line(x, logoY, w, logoY, 1);
 };
 
+
+/**
+ * Redraws a generic amplifier knob.
+ */
 amplifier.ui.redrawGenericKnob = function(x, y, angle) {
   amplifier.ui.chalk.circle(x, y, 50);
   amplifier.ui.chalk.lineAngle(x, y, 70, angle);
 };
 
+
+/**
+ * Redraws all amplifier switches.
+ */
 amplifier.ui.redrawSwitches = function() {
   for (var i = 0; i < amplifier.ui.switches_.length; ++i) {
     amplifier.ui.switches_[i].render();
@@ -423,6 +483,10 @@ amplifier.ui.redrawSwitches = function() {
   amplifier.ui.chalk.line(x, switchY, w, switchY, 1);
 };
 
+
+/**
+ * Redraws all amplifier knobs.
+ */
 amplifier.ui.redrawKnobs = function() {
   var knobX = amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50;
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
@@ -433,10 +497,24 @@ amplifier.ui.redrawKnobs = function() {
 };
 
 
+/**
+ * Default chalk line width.
+ * @type {number}
+ */
 amplifier.ui.chalk.lineWidth = 10;
 
-amplifier.ui.chalk.pattern;
 
+/**
+ * Chalk pattern.
+ * @type {CanvasPattern}
+ */
+amplifier.ui.chalk.pattern = null;
+
+
+/**
+ * Creates the chalk pattern.
+ * @return {!CanvasPattern}
+ */
 amplifier.ui.chalk.createPattern = function() {
   var patternSize = 512;
   var canvas = document.createElement('canvas');
@@ -461,50 +539,105 @@ amplifier.ui.chalk.createPattern = function() {
   return amplifier.ui.context.createPattern(canvas, 'repeat');
 };
 
+
+/**
+ * Initializes the chalk UI.
+ */
 amplifier.ui.chalk.init = function() {
   amplifier.ui.chalk.pattern = amplifier.ui.chalk.createPattern();
 };
 
-amplifier.ui.chalk.shape = function(shapeFunction, lineWidth) {
+
+/**
+ * Draws a generic shape in the chalk UI.
+ * @param {function(number=)} shapeFunction The shape function that will guide drawing.
+ * @param {number=} opt_lineWidth The line width for this shape.
+ */
+amplifier.ui.chalk.shape = function(shapeFunction, opt_lineWidth) {
   var ctx = amplifier.ui.context;
   ctx.save();
   ctx.fillStyle = amplifier.ui.chalk.pattern;
-  shapeFunction(lineWidth || amplifier.ui.chalk.lineWidth);
+  shapeFunction(opt_lineWidth || amplifier.ui.chalk.lineWidth);
   ctx.fill();
   ctx.restore();
 };
 
-amplifier.ui.chalk.text = function(text, x1, y1, font, align, baseline) {
+
+/**
+ * Draws a text shape in the chalk UI.
+ * @param {string} text The text to be drawn.
+ * @param {number} x1 The horizontal position for the text.
+ * @param {number} y1 The vertical position for the text.
+ * @param {string=} opt_font An optional font for this text.
+ * @param {string=} opt_align An optional alignment for this text.
+ * @param {string=} opt_baseline An optional baseline for this text.
+ */
+amplifier.ui.chalk.text = function(text, x1, y1, opt_font, opt_align, opt_baseline) {
   var ctx = amplifier.ui.context;
   amplifier.ui.chalk.shape(function() {
-    ctx.font = font || '10px sans-serif';
-    ctx.textAlign = align || 'start';
-    ctx.textBaseline = baseline || 'alphabetic';
+    ctx.font = opt_font || '10px sans-serif';
+    ctx.textAlign = opt_align || 'start';
+    ctx.textBaseline = opt_baseline || 'alphabetic';
     ctx.fillText(text, x1, y1);
   });
 };
 
-amplifier.ui.chalk.arc = function(xc, yc, r, ia, ea, lineWidth) {
+
+/**
+ * Draws an arc shape in the chalk UI.
+ * @param {number} xc The horizontal center for this arc.
+ * @param {number} yc The vertical center for this arc.
+ * @param {number} r The radius for this arc.
+ * @param {number} ia The initial angle for this arc.
+ * @param {number} ea The ending angle for this arc.
+ * @param {number=} opt_lineWidth The line width for this arc.
+ */
+amplifier.ui.chalk.arc = function(xc, yc, r, ia, ea, opt_lineWidth) {
   var ctx = amplifier.ui.context;
   amplifier.ui.chalk.shape(function(lineWidth) {
     ctx.beginPath();
     ctx.arc(xc, yc, r + lineWidth/2, ia, ea, true);
     ctx.arc(xc, yc, r - lineWidth/2, ea, ia, false);
     ctx.closePath();
-  }, lineWidth);
+  }, opt_lineWidth);
 };
 
-amplifier.ui.chalk.circle = function(xc, yc, r, lineWidth) {
-  amplifier.ui.chalk.arc(xc, yc, r, 0, Math.PI * 2, lineWidth);
+
+/**
+ * Draws a circle shape in the chalk UI.
+ * @param {number} xc The horizontal center for this circle.
+ * @param {number} yc The vertical center for this circle.
+ * @param {number} r The radius for this circle.
+ * @param {number=} opt_lineWidth The line width for this circle.
+ */
+amplifier.ui.chalk.circle = function(xc, yc, r, opt_lineWidth) {
+  amplifier.ui.chalk.arc(xc, yc, r, 0, Math.PI * 2, opt_lineWidth);
 };
 
-amplifier.ui.chalk.circleWithCenter = function(xc, yc, r, lineWidth) {
-  amplifier.ui.chalk.circle(xc, yc, r, lineWidth);
+
+/**
+ * Draws a circle shape with a visible center cross in the chalk UI.
+ * @param {number} xc The horizontal center for this circle.
+ * @param {number} yc The vertical center for this circle.
+ * @param {number} r The radius for this circle.
+ * @param {number=} opt_lineWidth The line width for this circle.
+ */
+amplifier.ui.chalk.circleWithCenter = function(xc, yc, r, opt_lineWidth) {
+  amplifier.ui.chalk.circle(xc, yc, r, opt_lineWidth);
   amplifier.ui.chalk.line(xc - 5, yc, xc + 5, yc, 1);
   amplifier.ui.chalk.line(xc, yc - 5, xc, yc + 5, 1);
 };
 
-amplifier.ui.chalk.lineAngle = function(x1, y1, size, angle, lineWidth) {
+
+/**
+ * Draws a line with a specific angle in the chalk UI.
+ * @param {number} x1 The initial horizontal position for the line.
+ * @param {number} y1 The initial vertical position for the line.
+ * @param {number} size The line size.
+ * @param {number} angle The line angle.
+ * @param {number=} opt_lineWidth The line width.
+ */
+amplifier.ui.chalk.lineAngle = function(x1, y1, size, angle, opt_lineWidth) {
   var ctx = amplifier.ui.context;
   amplifier.ui.chalk.shape(function(lineWidth) {
     var lw2 = lineWidth * 0.5;
@@ -514,11 +647,20 @@ amplifier.ui.chalk.lineAngle = function(x1, y1, size, angle, lineWidth) {
     ctx.beginPath();
     ctx.rect(0, 0, size, lineWidth);
     ctx.closePath();
-  }, lineWidth);
+  }, opt_lineWidth);
 };
 
-amplifier.ui.chalk.line = function(x1, y1, x2, y2, lineWidth) {
-  lineWidth = lineWidth || amplifier.ui.chalk.lineWidth;
+
+/**
+ * Draws a line between two points in the chalk UI.
+ * @param {number} x1 The initial horizontal position for the line.
+ * @param {number} y1 The initial vertical position for the line.
+ * @param {number} x2 The final horizontal position for the line.
+ * @param {number} y2 The final vertical position for the line.
+ * @param {number=} opt_lineWidth The line width.
+ */
+amplifier.ui.chalk.line = function(x1, y1, x2, y2, opt_lineWidth) {
+  lineWidth = opt_lineWidth || amplifier.ui.chalk.lineWidth;
   var xx = x2 - x1;
   var yy = y2 - y1;
   var size = Math.sqrt(xx * xx + yy * yy) + lineWidth;
@@ -526,6 +668,16 @@ amplifier.ui.chalk.line = function(x1, y1, x2, y2, lineWidth) {
   amplifier.ui.chalk.lineAngle(x1, y1, size, angle, lineWidth);
 };
 
+
+/**
+ * Draws a rectangle with bleeding lines in the chalk UI.
+ * @param {number} x1 The initial horizontal position for the rectangle.
+ * @param {number} y1 The initial vertical position for the rectangle.
+ * @param {number} w The width for the rectangle.
+ * @param {number} h The height for the rectangle.
+ * @param {number} lineWidth The line width for the rectangle.
+ * @param {number} bleed The bleed for the rectangle.
+ */
 amplifier.ui.chalk.rectWithBleed = function(x1, y1, w, h, lineWidth, bleed) {
   var x2 = x1 + w;
   var y2 = y1 + h;
@@ -535,22 +687,40 @@ amplifier.ui.chalk.rectWithBleed = function(x1, y1, w, h, lineWidth, bleed) {
   amplifier.ui.chalk.line(x1 - bleed, y2, x2 + bleed, y2, lineWidth);
 };
 
-amplifier.ui.chalk.rect = function(x1, y1, w, h, lineWidth) {
-  amplifier.ui.chalk.rectWithBleed(x1, y1, w, h, lineWidth, 0);
+
+/**
+ * Draws a rectangle in the chalk UI.
+ * @param {number} x1 The initial horizontal position for the rectangle.
+ * @param {number} y1 The initial vertical position for the rectangle.
+ * @param {number} w The width for the rectangle.
+ * @param {number} h The height for the rectangle.
+ * @param {number=} opt_lineWidth The line width for the rectangle.
+ */
+amplifier.ui.chalk.rect = function(x1, y1, w, h, opt_lineWidth) {
+  amplifier.ui.chalk.rectWithBleed(x1, y1, w, h, opt_lineWidth, 0);
 };
 
-amplifier.ui.chalk.roundRect = function(x1, y1, w, h, r, lineWidth) {
-  lineWidth = lineWidth || amplifier.ui.chalk.lineWidth;
+
+/**
+ * Draws a rounded rectangle in the chalk UI.
+ * @param {number} x1 The initial horizontal position for the rectangle.
+ * @param {number} y1 The initial vertical position for the rectangle.
+ * @param {number} w The width for the rectangle.
+ * @param {number} h The height for the rectangle.
+ * @param {number} r The radius for rounded corners in the rectangle.
+ * @param {number=} opt_lineWidth The line width for the rectangle.
+ */
+amplifier.ui.chalk.roundRect = function(x1, y1, w, h, r, opt_lineWidth) {
   var x2 = x1 + w;
   var y2 = y1 + h;
-  amplifier.ui.chalk.arc(x1 + r, y1 + r, r, -Math.PI / 2, Math.PI, lineWidth);
-  amplifier.ui.chalk.line(x1 + r, y1, x2 - r, y1, lineWidth);
-  amplifier.ui.chalk.arc(x2 - r, y1 + r, r, 0, -Math.PI / 2, lineWidth);
-  amplifier.ui.chalk.line(x1, y1 + r, x1, y2 - r, lineWidth);
-  amplifier.ui.chalk.line(x2, y1 + r, x2, y2 - r, lineWidth);
-  amplifier.ui.chalk.arc(x1 + r, y2 - r, r, Math.PI, Math.PI / 2, lineWidth);
-  amplifier.ui.chalk.line(x1 + r, y2, x2 - r, y2, lineWidth);
-  amplifier.ui.chalk.arc(x2 - r, y2 - r, r, Math.PI / 2, 0, lineWidth);
+  amplifier.ui.chalk.arc(x1 + r, y1 + r, r, -Math.PI / 2, Math.PI, opt_lineWidth);
+  amplifier.ui.chalk.line(x1 + r, y1, x2 - r, y1, opt_lineWidth);
+  amplifier.ui.chalk.arc(x2 - r, y1 + r, r, 0, -Math.PI / 2, opt_lineWidth);
+  amplifier.ui.chalk.line(x1, y1 + r, x1, y2 - r, opt_lineWidth);
+  amplifier.ui.chalk.line(x2, y1 + r, x2, y2 - r, opt_lineWidth);
+  amplifier.ui.chalk.arc(x1 + r, y2 - r, r, Math.PI, Math.PI / 2, opt_lineWidth);
+  amplifier.ui.chalk.line(x1 + r, y2, x2 - r, y2, opt_lineWidth);
+  amplifier.ui.chalk.arc(x2 - r, y2 - r, r, Math.PI / 2, 0, opt_lineWidth);
 };
 
 
@@ -830,6 +1000,7 @@ amplifier.ui.Knob.prototype.handleMouseDown = function() {
 
 
 /**
+ * Handles a mouseup on this knob.
  */
 amplifier.ui.Knob.prototype.handleMouseUp = function() {
   this.isMouseMoveTarget_ = false;
@@ -837,6 +1008,8 @@ amplifier.ui.Knob.prototype.handleMouseUp = function() {
 
 
 /**
+ * Handles a mousemove on this knob.  This is the main event handling point that changes this
+ * knob's value.
  */
 amplifier.ui.Knob.prototype.handleMouseMove = function(event) {
   if (!this.isMouseMoveTarget_) {
@@ -860,6 +1033,7 @@ window.addEventListener('load', amplifier.core.init);
 window.addEventListener('unload', amplifier.core.dispose);
 window.addEventListener('resize', amplifier.ui.redraw);
 
+// Bind all mouse events to the global event handler.
 window.addEventListener('click', amplifier.ui.events.globalHandler);
 window.addEventListener('mousedown', amplifier.ui.events.globalHandler);
 window.addEventListener('mousemove', amplifier.ui.events.globalHandler);
