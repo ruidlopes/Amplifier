@@ -32,6 +32,14 @@ lib.msg.send = function(msg) {
 };
 
 
+// Reusable generic functions.
+namespace('lib.functions');
+
+lib.functions.EMPTY = function() {};
+lib.functions.TRUE = function() { return true; };
+lib.functions.FALSE = function() { return false; };
+
+
 // Amplifier namespaces.
 namespace('amplifier.audio');
 namespace('amplifier.audio.input');
@@ -564,8 +572,8 @@ amplifier.ui.events.globalHandler = function(event) {
   var typeHandlers = amplifier.ui.events.handlers_[event.type];
   for (var id in typeHandlers) {
     var idHandler = typeHandlers[id];
-    if (idHandler && idHandler.within(event.clientX, event.clientY)) {
-      idHandler.handler();
+    if (idHandler && idHandler.within && idHandler.within(event.clientX, event.clientY)) {
+      idHandler.handler(event);
     }
   }
 };
@@ -723,6 +731,18 @@ amplifier.ui.Knob = function(x, value, id, label) {
    * @private
    */
   this.label_ = label;
+
+  /**
+   * @type {boolean}
+   * @private
+   */
+  this.isMouseMoveTarget_ = false;
+
+  /**
+   * @type {boolean}
+   * @private
+   */
+  this.skipClick_ = false;
 };
 
 
@@ -759,6 +779,15 @@ amplifier.ui.Knob.prototype.render = function() {
 
   amplifier.ui.events.setHandler(
       'click', this.id_, this.isWithin.bind(this), this.handleClick.bind(this));
+
+  amplifier.ui.events.setHandler(
+      'mousedown', this.id_, this.isWithin.bind(this), this.handleMouseDown.bind(this));
+
+  amplifier.ui.events.setHandler(
+      'mousemove', this.id_, lib.functions.TRUE, this.handleMouseMove.bind(this));
+
+  amplifier.ui.events.setHandler(
+      'mouseup', this.id_, lib.functions.TRUE, this.handleMouseUp.bind(this));
 };
 
 
@@ -783,8 +812,46 @@ amplifier.ui.Knob.prototype.isWithin = function(x, y) {
  * Handles a click on this knob.
  */
 amplifier.ui.Knob.prototype.handleClick = function() {
+  if (this.skipClick_) {
+    this.skipClick_ = false;
+    return;
+  }
   var nextValue = Math.floor((this.value_ * 10 + 1) % 11) / 10;
   this.setValue(nextValue);
+};
+
+
+/**
+ * Handles a mousedown on this knob.
+ */
+amplifier.ui.Knob.prototype.handleMouseDown = function() {
+  this.isMouseMoveTarget_ = true;
+};
+
+
+/**
+ */
+amplifier.ui.Knob.prototype.handleMouseUp = function() {
+  this.isMouseMoveTarget_ = false;
+};
+
+
+/**
+ */
+amplifier.ui.Knob.prototype.handleMouseMove = function(event) {
+  if (!this.isMouseMoveTarget_) {
+    return;
+  }
+
+  this.skipClick_ = true;
+
+  var knobX = this.x_;
+  var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
+  var xx = knobX - event.clientX;
+  var yy = knobY - event.clientY;
+  // TODO: maybe convert this into radial knob interaction.
+  var value = yy / 200;
+  this.setValue(value);
 };
 
 
@@ -795,3 +862,5 @@ window.addEventListener('resize', amplifier.ui.redraw);
 
 window.addEventListener('click', amplifier.ui.events.globalHandler);
 window.addEventListener('mousedown', amplifier.ui.events.globalHandler);
+window.addEventListener('mousemove', amplifier.ui.events.globalHandler);
+window.addEventListener('mouseup', amplifier.ui.events.globalHandler);
