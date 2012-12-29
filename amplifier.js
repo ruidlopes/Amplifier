@@ -742,7 +742,7 @@ amplifier.ui.events.globalHandler = function(event) {
   var typeHandlers = amplifier.ui.events.handlers_[event.type];
   for (var id in typeHandlers) {
     var idHandler = typeHandlers[id];
-    if (idHandler && idHandler.within && idHandler.within(event.clientX, event.clientY)) {
+    if (idHandler && idHandler.within(event.clientX, event.clientY)) {
       idHandler.handler(event);
     }
   }
