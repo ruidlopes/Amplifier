@@ -955,6 +955,18 @@ amplifier.ui.Knob = function(x, value, id, label) {
   this.isMouseMoveTarget_ = false;
 
   /**
+   * @type {number}
+   * @private
+   */
+  this.mouseDownY_;
+
+  /**
+   * @type {number}
+   * @private
+   */
+  this.mouseDownValue_;
+
+  /**
    * @type {boolean}
    * @private
    */
@@ -1039,9 +1051,12 @@ amplifier.ui.Knob.prototype.handleClick = function() {
 
 /**
  * Handles a mousedown on this knob.
+ * @param {!Event} event The generated mousemove event.
  */
-amplifier.ui.Knob.prototype.handleMouseDown = function() {
+amplifier.ui.Knob.prototype.handleMouseDown = function(event) {
   this.isMouseMoveTarget_ = true;
+  this.mouseDownY_ = event.clientY;
+  this.mouseDownValue_ = this.value_;
 };
 
 
@@ -1056,6 +1071,7 @@ amplifier.ui.Knob.prototype.handleMouseUp = function() {
 /**
  * Handles a mousemove on this knob.  This is the main event handling point that changes this
  * knob's value.
+ * @param {!Event} event The generated mousemove event.
  */
 amplifier.ui.Knob.prototype.handleMouseMove = function(event) {
   if (!this.isMouseMoveTarget_) {
@@ -1064,12 +1080,7 @@ amplifier.ui.Knob.prototype.handleMouseMove = function(event) {
 
   this.skipClick_ = true;
 
-  var knobX = this.x_;
-  var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
-  var xx = knobX - event.clientX;
-  var yy = knobY - event.clientY;
-  // TODO: maybe convert this into radial knob interaction.
-  var value = yy / 200;
+  var value = this.mouseDownValue_ + (this.mouseDownY_ - event.clientY) / 200;
   this.setValue(value);
 };
 
