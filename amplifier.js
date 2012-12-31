@@ -3,7 +3,7 @@
 
 
 /**
- * Create a namespace under the window scope.
+ * Creates a namespace under the window scope.
  * @param {string} ns The namespace to be created.
  */
 var namespace = function(ns) {
@@ -13,6 +13,34 @@ var namespace = function(ns) {
     scope[name] = scope[name] || {};
   }
 }
+
+
+/**
+ * Establishes oop-style inheritance between two objects.
+ * @param {Function} child The child object.
+ * @param {Function} parent The parent object.
+ */
+var inherits = function(child, parent) {
+  child.prototype = new parent();
+  child.prototype.constructor = parent;
+
+  child.prototype.super = function() {
+    this.constructor.apply(this, Array.prototype.slice.call(arguments, 0));
+    this.super = {};
+
+    var proto = this.constructor.prototype;
+    var me = this;
+
+    for (var i in proto) {
+      if (proto[i] instanceof Function) {
+        me.super[i] = (function(fn) {
+          return fn.bind(me);
+        })(proto[i]);
+      }
+    }
+  };
+};
+
 
 
 // Micro inter-object messaging.
@@ -42,8 +70,9 @@ lib.functions.FALSE = function() { return false; };
 
 // Amplifier namespaces.
 namespace('amplifier.audio');
+namespace('amplifier.audio.Node');
+namespace('amplifier.audio.Volume');
 namespace('amplifier.audio.input');
-namespace('amplifier.audio.volume');
 namespace('amplifier.core');
 namespace('amplifier.ui');
 namespace('amplifier.ui.constants');
@@ -77,10 +106,10 @@ amplifier.audio.context;
 
 
 /**
- * The audio nodes that will be chained up all the way to the context destination.
- * @type {!Array.<AudioNode>}
+ * The volume node.
+ * @type {amplifier.audio.Volume}
  */
-amplifier.audio.nodes = [];
+amplifier.audio.volume = null;
 
 
 /**
@@ -102,11 +131,8 @@ amplifier.audio.init = function() {
  * Initializes all audio nodes.
  */
 amplifier.audio.initNodes = function() {
-  amplifier.audio.volume.init();
-  amplifier.audio.nodes.push(amplifier.audio.volume.node);
-
-  var lastNode = amplifier.audio.nodes[amplifier.audio.nodes.length - 1];
-  lastNode.connect(amplifier.audio.context.destination);
+  amplifier.audio.volume = new amplifier.audio.Volume();
+  amplifier.audio.volume.node.connect(amplifier.audio.context.destination);
 };
 
 
@@ -125,7 +151,7 @@ amplifier.audio.bindListeners = function() {
   });
 
   var knobListeners = {
-    'VOLUME': amplifier.audio.volume.setValue
+    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volumeNode)
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
     if (knobListeners[id]) {
@@ -165,7 +191,7 @@ amplifier.audio.sound = function(state) {
  * Returns the destination node to connect the audio input.
  */
 amplifier.audio.getDestinationForInput = function() {
-  return amplifier.audio.nodes[0];
+  return amplifier.audio.volume.node;
 };
 
 
@@ -216,70 +242,93 @@ amplifier.audio.input.disconnect = function() {
 
 
 /**
- * The audio volume node.
- * @type {GainNode}
+ * An audio node.
+ * @param {!AudioNode} node The underlying WebAudio node.
+ * @param {number} value The initial value for this node.
+ * @constructor
  */
-amplifier.audio.volume.node = null;
+amplifier.audio.Node = function(node, value) {
+  /**
+   * @type {!AudioNode}
+   */
+  this.node = node;
 
-
-/**
- * Volume state.
- * @type {boolean}
- */
-amplifier.audio.volume.on = false;
-
-
-/**
- * Volume value.
- */
-amplifier.audio.volume.value = 0.0;
-
-
-/**
- * Initializes a volume node.
- */
-amplifier.audio.volume.init = function() {
-  amplifier.audio.volume.node = amplifier.audio.context.createGain();
-  amplifier.audio.volume.turnOff();
+  /**
+   * @type {number}
+   */
+  this.value = value;
 };
 
 
 /**
- * Turns the volume on.
+ * Sets the new value for this node.
+ * @param {number} newValue The new value.
  */
-amplifier.audio.volume.turnOn = function() {
-  amplifier.audio.volume.node.gain.value = amplifier.audio.volume.value;
-  amplifier.audio.volume.on = true;
+amplifier.audio.Node.prototype.setValue = function(newValue) {
+  this.value = newValue;
 };
 
 
 /**
- * Turns the volume off.
+ * Gets the current value for this node.
+ * @return {number} The current value.
  */
-amplifier.audio.volume.turnOff = function() {
-  amplifier.audio.volume.node.gain.value = 0.0;
-  amplifier.audio.volume.on = false;
+amplifier.audio.Node.prototype.getValue = function() {
+  return this.value;
+};
+
+
+
+/**
+ * A volume node.
+ * @constructor
+ * @extends {amplifier.audio.Node}
+ */
+amplifier.audio.Volume = function() {
+  this.super(amplifier.audio.context.createGain(), 0.0);
+
+  /**
+   * @type {boolean}
+   */
+  this.on = false;
+
+  this.turnOff();
+};
+inherits(amplifier.audio.Volume, amplifier.audio.Node);
+
+
+/**
+ * The amplification factor to be applied.
+ * @type {number}
+ * @const
+ */
+amplifier.audio.Volume.AMPLIFICATION = 10;
+
+
+/**
+ * Turns on the volume.
+ */
+amplifier.audio.Volume.prototype.turnOn = function() {
+  this.node.gain.value = this.value;
+  this.on = true;
 };
 
 
 /**
- * Sets the volume value.
- * @param {number} value The new volme value.  This must be a number between 0.0 and 1.0.
+ * Turns off the volume.
  */
-amplifier.audio.volume.setValue = function(value) {
-  amplifier.audio.volume.value = value * 10;  // We convert this into a gain between 0.0 and 10.0.
-  if (amplifier.audio.volume.on) {
-    amplifier.audio.volume.node.gain.value = value * 10;
+amplifier.audio.Volume.prototype.turnOff = function() {
+  this.node.gain.value = 0.0;
+  this.on = false;
+};
+
+
+/** @overrides */
+amplifier.audio.Volume.prototype.setValue = function(newValue) {
+  this.super.setValue(newValue * amplifier.audio.Volume.AMPLIFICATION);
+  if (this.on) {
+    this.node.gain.value = newValue * amplifier.audio.Volume.AMPLIFICATION;
   }
-};
-
-
-/**
- * Gets the volume value.
- * @return {number} The current volume.
- */
-amplifier.audio.volume.getValue = function() {
-  return amplifier.audio.volume.value;
 };
 
 
