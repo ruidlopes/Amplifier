@@ -64,8 +64,8 @@ lib.msg.send = function(msg) {
 // Reusable generic functions.
 namespace('lib.functions');
 
-lib.functions.EMPTY = function() {};
 lib.functions.constant = function(value) { return function() { return value; }; };
+lib.functions.EMPTY = lib.functions.constant(undefined);
 lib.functions.TRUE = lib.functions.constant(true);
 lib.functions.FALSE = lib.functions.constant(false);
 
