@@ -60,12 +60,15 @@ lib.msg.send = function(msg) {
 };
 
 
+
 // Reusable generic functions.
 namespace('lib.functions');
 
 lib.functions.EMPTY = function() {};
-lib.functions.TRUE = function() { return true; };
-lib.functions.FALSE = function() { return false; };
+lib.functions.constant = function(value) { return function() { return value; }; };
+lib.functions.TRUE = lib.functions.constant(true);
+lib.functions.FALSE = lib.functions.constant(false);
+
 
 
 // Amplifier namespaces.
@@ -151,7 +154,7 @@ amplifier.audio.bindListeners = function() {
   });
 
   var knobListeners = {
-    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volumeNode)
+    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volume)
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
     if (knobListeners[id]) {
@@ -188,14 +191,6 @@ amplifier.audio.sound = function(state) {
 
 
 /**
- * Returns the destination node to connect the audio input.
- */
-amplifier.audio.getDestinationForInput = function() {
-  return amplifier.audio.volume.node;
-};
-
-
-/**
  * The input stream source.
  */
 amplifier.audio.input.streamSource = null;
@@ -211,7 +206,7 @@ amplifier.audio.input.connect = function() {
         amplifier.audio.input.successCallback,
         amplifier.audio.input.errorCallback);
   } else {
-    amplifier.audio.input.streamSource.connect(amplifier.audio.getDestinationForInput());
+    amplifier.audio.input.streamSource.connect(amplifier.audio.volume.node);
   }
 };
 
@@ -221,7 +216,7 @@ amplifier.audio.input.connect = function() {
  */
 amplifier.audio.input.successCallback = function(stream) {
   amplifier.audio.input.streamSource = amplifier.audio.context.createMediaStreamSource(stream);
-  amplifier.audio.input.streamSource.connect(amplifier.audio.getDestinationForInput());
+  amplifier.audio.input.streamSource.connect(amplifier.audio.volume.node);
 };
 
 
@@ -239,6 +234,7 @@ amplifier.audio.input.errorCallback = function() {
 amplifier.audio.input.disconnect = function() {
   amplifier.audio.input.streamSource.disconnect();
 };
+
 
 
 /**
