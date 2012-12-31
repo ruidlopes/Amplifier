@@ -1,5 +1,5 @@
 // Amplifier.js
-// Copyright Rui Lopes (ruidlopes@gmail.com) 2012-2013
+// Copyright Rui Lopes (ruidlopes@gmail.com) 2012-2013.
 
 
 /**
@@ -55,7 +55,9 @@ lib.msg.send = function(msg) {
   var args = Array.prototype.slice.call(arguments, 1);
   var listeners = lib.msg.listeners_[msg];
   for (var i in listeners) {
-    listeners[i].apply(this, args);
+    if (listeners[i].apply(this, args) === false) {
+      return;
+    }
   }
 };
 
@@ -862,6 +864,7 @@ amplifier.ui.Switch.prototype.setState = function(newState) {
 
 /**
  * Handles a failure on toggling this switch.
+ * @param {string} The id that triggered the failure.
  */
 amplifier.ui.Switch.prototype.handleFailure = function(id) {
   if (id == this.id_) {
@@ -976,6 +979,7 @@ amplifier.ui.Knob = function(x, value, id, label) {
 
 /**
  * Sets the value for this knob.
+ * @param {number} newValue The new value to be set.
  */
 amplifier.ui.Knob.prototype.setValue = function(newValue) {
   this.value_ = Math.max(0.0, Math.min(1.0, newValue));
