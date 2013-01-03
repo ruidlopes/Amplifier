@@ -16,29 +16,15 @@ var namespace = function(ns) {
 
 
 /**
- * Establishes oop-style inheritance between two objects.
- * @param {Function} child The child object.
- * @param {Function} parent The parent object.
+ * Establishes oop-style inheritance.
+ * @param {Function} base The base object.
+ * @return {Function} The inherited object.
  */
-var inherits = function(child, parent) {
-  child.prototype = new parent();
-  child.prototype.constructor = parent;
-
-  child.prototype.super = function() {
-    this.constructor.apply(this, Array.prototype.slice.call(arguments, 0));
-    this.super = {};
-
-    var proto = this.constructor.prototype;
-    var me = this;
-
-    for (var i in proto) {
-      if (proto[i] instanceof Function) {
-        me.super[i] = (function(fn) {
-          return fn.bind(me);
-        })(proto[i]);
-      }
-    }
-  };
+Function.prototype.inherits = function(base) {
+  var empty = function() {};
+  empty.prototype = base.prototype;
+  this.prototype = new empty();
+  return this;
 };
 
 
@@ -75,6 +61,10 @@ lib.functions.FALSE = lib.functions.constant(false);
 
 // Amplifier namespaces.
 namespace('amplifier.audio');
+namespace('amplifier.audio.BandStop');
+namespace('amplifier.audio.Biquad');
+namespace('amplifier.audio.HighPass');
+namespace('amplifier.audio.LowPass');
 namespace('amplifier.audio.Node');
 namespace('amplifier.audio.Volume');
 namespace('amplifier.audio.input');
@@ -116,6 +106,10 @@ amplifier.audio.context;
  */
 amplifier.audio.volume = null;
 
+amplifier.audio.bass = null;
+amplifier.audio.middle = null;
+amplifier.audio.treble = null;
+
 
 /**
  * Initializes audio.
@@ -132,12 +126,29 @@ amplifier.audio.init = function() {
 };
 
 
+amplifier.audio.chainNodes = function() {
+  var nodes = arguments;
+  for (var i = 0; i < nodes.length - 1; i++) {
+    nodes[i].connect(nodes[i + 1]);
+  }
+};
+
 /**
  * Initializes all audio nodes.
  */
 amplifier.audio.initNodes = function() {
   amplifier.audio.volume = new amplifier.audio.Volume();
-  amplifier.audio.volume.node.connect(amplifier.audio.context.destination);
+  amplifier.audio.bass = new amplifier.audio.HighPass();
+  amplifier.audio.middle = new amplifier.audio.BandStop();
+  amplifier.audio.treble = new amplifier.audio.LowPass();
+
+  amplifier.audio.chainNodes(
+      amplifier.audio.volume.node,
+      amplifier.audio.bass.node,
+      amplifier.audio.middle.node,
+      amplifier.audio.treble.node,
+      amplifier.audio.context.destination
+  );
 };
 
 
@@ -156,7 +167,10 @@ amplifier.audio.bindListeners = function() {
   });
 
   var knobListeners = {
-    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volume)
+    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volume),
+    'BASS': amplifier.audio.bass.setValue.bind(amplifier.audio.bass),
+    'MIDDLE': amplifier.audio.middle.setValue.bind(amplifier.audio.middle),
+    'TREBLE': amplifier.audio.treble.setValue.bind(amplifier.audio.treble)
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
     if (knobListeners[id]) {
@@ -283,7 +297,8 @@ amplifier.audio.Node.prototype.getValue = function() {
  * @extends {amplifier.audio.Node}
  */
 amplifier.audio.Volume = function() {
-  this.super(amplifier.audio.context.createGain(), 0.0);
+  amplifier.audio.Node.call(
+      this, amplifier.audio.context.createGain(), 0.0);
 
   /**
    * @type {boolean}
@@ -291,8 +306,7 @@ amplifier.audio.Volume = function() {
   this.on = false;
 
   this.turnOff();
-};
-inherits(amplifier.audio.Volume, amplifier.audio.Node);
+}.inherits(amplifier.audio.Node);
 
 
 /**
@@ -323,10 +337,92 @@ amplifier.audio.Volume.prototype.turnOff = function() {
 
 /** @overrides */
 amplifier.audio.Volume.prototype.setValue = function(newValue) {
-  this.super.setValue(newValue * amplifier.audio.Volume.AMPLIFICATION);
+  amplifier.audio.Node.prototype.setValue.call(
+      this, newValue * amplifier.audio.Volume.AMPLIFICATION);
   if (this.on) {
     this.node.gain.value = newValue * amplifier.audio.Volume.AMPLIFICATION;
   }
+};
+
+
+
+/**
+ * A generic biquad filter.
+ * @param {string} type The biquad filter type (as per WebAudio API).
+ * @param {number} frequency The base frequency.
+ * @constructor
+ * @extends {amplifier.audio.Node}
+ */
+amplifier.audio.Biquad = function(type, frequency) {
+  amplifier.audio.Node.call(
+      this, amplifier.audio.context.createBiquadFilter(), frequency);
+  this.node.type = type;
+}.inherits(amplifier.audio.Node);
+
+
+/** @overrides */
+amplifier.audio.Biquad.prototype.setValue = function(newValue) {
+  amplifier.audio.Node.prototype.setValue.call(this, newValue);
+  this.node.frequency.value = newValue;
+};
+
+
+
+/**
+ * A low-pass filter.  This is the audio counterpart for the 'TREBLE' knob.
+ * @constructor
+ * @extends {amplifier.audio.Biquad}
+ */
+amplifier.audio.LowPass = function() {
+  amplifier.audio.Biquad.call(this, 'lowpass', 0);
+}.inherits(amplifier.audio.Biquad);
+
+
+/** @overrides */
+amplifier.audio.LowPass.prototype.setValue = function(newValue) {
+  // Frequencies mapped as roughly [0.0 - 1.0] -> [20 - 12k].
+  var computedValue = 20 + Math.pow(newValue * 10.0, 5.1 - newValue);
+  amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
+};
+
+
+
+/**
+ * A band-stop filter.  This is the audio counterpart for the 'MIDDLE' knob.
+ * @constructor
+ * @extends {amplifier.audio.Biquad}
+ */
+amplifier.audio.BandStop = function() {
+  amplifier.audio.Biquad.call(this, 'notch', 0);
+}.inherits(amplifier.audio.Biquad);
+
+
+/** @overrides */
+amplifier.audio.BandStop.prototype.setValue = function(newValue) {
+  // TODO: Come back to this computation, this is incorrect for now.
+  var computedValue = 20 - newValue * 20;
+  this.value = computedValue;
+  this.node.frequency.value = 2000;
+  this.node.Q.value = computedValue;
+};
+
+
+
+/**
+ * A high-pass filter.  This is the audio counterpart for the 'BASS' knob.
+ * @constructor
+ * @extends {amplifier.audio.Biquad}
+ */
+amplifier.audio.HighPass = function() {
+  amplifier.audio.Biquad.call(this, 'highpass', 0);
+}.inherits(amplifier.audio.Biquad);
+
+
+/** @overrides */
+amplifier.audio.HighPass.prototype.setValue = function(newValue) {
+  // Frequencies mapped as roughly [0.0 - 1.0] -> [12k - 20].
+  var computedValue = Math.pow(newValue * 10.0, 5.1 - newValue);
+  amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
 
