@@ -63,6 +63,7 @@ lib.functions.FALSE = lib.functions.constant(false);
 namespace('amplifier.audio');
 namespace('amplifier.audio.BandStop');
 namespace('amplifier.audio.Biquad');
+namespace('amplifier.audio.Distortion');
 namespace('amplifier.audio.HighPass');
 namespace('amplifier.audio.LowPass');
 namespace('amplifier.audio.Node');
@@ -106,9 +107,33 @@ amplifier.audio.context;
  */
 amplifier.audio.volume = null;
 
+
+/**
+ * The bass node.
+ * @type {amplifier.audio.HighPass}
+ */
 amplifier.audio.bass = null;
+
+
+/**
+ * The middle node.
+ * @type {amplifier.audio.BandStop}
+ */
 amplifier.audio.middle = null;
+
+
+/**
+ * The treble node.
+ * @type {amplifer.audio.LowPass}
+ */
 amplifier.audio.treble = null;
+
+
+/**
+ * The distortion node.
+ * @type {amplifier.audio.Distortion}
+ */
+amplifier.audio.distortion = null;
 
 
 /**
@@ -138,15 +163,17 @@ amplifier.audio.chainNodes = function() {
  */
 amplifier.audio.initNodes = function() {
   amplifier.audio.volume = new amplifier.audio.Volume();
+  amplifier.audio.distortion = new amplifier.audio.Distortion();
   amplifier.audio.bass = new amplifier.audio.HighPass();
   amplifier.audio.middle = new amplifier.audio.BandStop();
   amplifier.audio.treble = new amplifier.audio.LowPass();
 
   amplifier.audio.chainNodes(
-      amplifier.audio.volume.node,
+      amplifier.audio.distortion.node,
       amplifier.audio.bass.node,
       amplifier.audio.middle.node,
       amplifier.audio.treble.node,
+      amplifier.audio.volume.node,
       amplifier.audio.context.destination
   );
 };
@@ -168,6 +195,7 @@ amplifier.audio.bindListeners = function() {
 
   var knobListeners = {
     'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volume),
+    'DISTORTION': amplifier.audio.distortion.setValue.bind(amplifier.audio.distortion),
     'BASS': amplifier.audio.bass.setValue.bind(amplifier.audio.bass),
     'MIDDLE': amplifier.audio.middle.setValue.bind(amplifier.audio.middle),
     'TREBLE': amplifier.audio.treble.setValue.bind(amplifier.audio.treble)
@@ -335,7 +363,7 @@ amplifier.audio.Volume.prototype.turnOff = function() {
 };
 
 
-/** @overrides */
+/** @override */
 amplifier.audio.Volume.prototype.setValue = function(newValue) {
   amplifier.audio.Node.prototype.setValue.call(
       this, newValue * amplifier.audio.Volume.AMPLIFICATION);
@@ -360,7 +388,7 @@ amplifier.audio.Biquad = function(type, frequency) {
 }.inherits(amplifier.audio.Node);
 
 
-/** @overrides */
+/** @override */
 amplifier.audio.Biquad.prototype.setValue = function(newValue) {
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
   this.node.frequency.value = newValue;
@@ -378,7 +406,7 @@ amplifier.audio.LowPass = function() {
 }.inherits(amplifier.audio.Biquad);
 
 
-/** @overrides */
+/** @override */
 amplifier.audio.LowPass.prototype.setValue = function(newValue) {
   // Frequencies mapped as roughly [0.0 - 1.0] -> [20 - 12k].
   var computedValue = 20 + Math.pow(newValue * 10.0, 5.1 - newValue);
@@ -397,7 +425,7 @@ amplifier.audio.BandStop = function() {
 }.inherits(amplifier.audio.Biquad);
 
 
-/** @overrides */
+/** @override */
 amplifier.audio.BandStop.prototype.setValue = function(newValue) {
   // TODO: Come back to this computation, this is incorrect for now.
   var computedValue = 20 - newValue * 20;
@@ -418,11 +446,52 @@ amplifier.audio.HighPass = function() {
 }.inherits(amplifier.audio.Biquad);
 
 
-/** @overrides */
+/** @override */
 amplifier.audio.HighPass.prototype.setValue = function(newValue) {
   // Frequencies mapped as roughly [0.0 - 1.0] -> [12k - 20].
-  var computedValue = Math.pow(newValue * 10.0, 5.1 - newValue);
+  var computedValue = 12600 - Math.pow(newValue * 10.0, 5.1 - newValue);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
+};
+
+
+
+/**
+ * Distortion.
+ * @constructor
+ * @extends {amplifier.audio.Node}
+ */
+amplifier.audio.Distortion = function() {
+  amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper(), 0);
+  this.curve = new Float32Array(amplifier.audio.Distortion.SAMPLES);
+  this.node.curve = this.curve;
+}.inherits(amplifier.audio.Node);
+
+
+/**
+ * Curve sample size.
+ * @type {number}
+ */
+amplifier.audio.Distortion.SAMPLES = 2048;
+
+
+/**
+ * Computes the wave shaper curve.
+ * @private
+ */
+amplifier.audio.Distortion.prototype.computeCurve_ = function() {
+  var k = 2 * this.value / (1 - this.value);
+  for (var i = 0; i < amplifier.audio.Distortion.SAMPLES; ++i) {
+    var x = (i - 0) * (1 - (-1)) / (amplifier.audio.Distortion.SAMPLES - 0) + (-1);
+    this.curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
+  }
+};
+
+
+/** @override */
+amplifier.audio.Distortion.prototype.setValue = function(newValue) {
+  var computedValue = Math.max(Math.min(newValue, 0.985), 0.005);
+  amplifier.audio.Node.prototype.setValue.call(this, computedValue);
+  this.computeCurve_();
 };
 
 
