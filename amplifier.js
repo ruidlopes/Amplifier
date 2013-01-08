@@ -193,12 +193,16 @@ amplifier.audio.bindListeners = function() {
     }
   });
 
+  var bindSetValue = function(node) {
+    return node.setValue.bind(node);
+  };
+
   var knobListeners = {
-    'VOLUME': amplifier.audio.volume.setValue.bind(amplifier.audio.volume),
-    'DISTORTION': amplifier.audio.distortion.setValue.bind(amplifier.audio.distortion),
-    'BASS': amplifier.audio.bass.setValue.bind(amplifier.audio.bass),
-    'MIDDLE': amplifier.audio.middle.setValue.bind(amplifier.audio.middle),
-    'TREBLE': amplifier.audio.treble.setValue.bind(amplifier.audio.treble)
+    'VOLUME': bindSetValue(amplifier.audio.volume),
+    'DISTORTION': bindSetValue(amplifier.audio.distortion),
+    'BASS': bindSetValue(amplifier.audio.bass),
+    'MIDDLE': bindSetValue(amplifier.audio.middle),
+    'TREBLE': bindSetValue(amplifier.audio.treble)
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
     if (knobListeners[id]) {
