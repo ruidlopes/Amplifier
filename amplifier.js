@@ -71,11 +71,11 @@ namespace('amplifier.audio.Volume');
 namespace('amplifier.audio.input');
 namespace('amplifier.core');
 namespace('amplifier.ui');
-namespace('amplifier.ui.constants');
-namespace('amplifier.ui.chalk');
-namespace('amplifier.ui.events');
 namespace('amplifier.ui.Knob');
 namespace('amplifier.ui.Switch');
+namespace('amplifier.ui.chalk');
+namespace('amplifier.ui.constants');
+namespace('amplifier.ui.events');
 
 
 /**
