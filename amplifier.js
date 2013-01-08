@@ -180,6 +180,12 @@ amplifier.audio.initNodes = function() {
 
 
 /**
+ */
+amplifier.audio.getFirstNode = function() {
+  return amplifier.audio.distortion.node;
+};
+
+/**
  * Binds message listeners.
  */
 amplifier.audio.bindListeners = function() {
@@ -254,7 +260,7 @@ amplifier.audio.input.connect = function() {
         amplifier.audio.input.successCallback,
         amplifier.audio.input.errorCallback);
   } else {
-    amplifier.audio.input.streamSource.connect(amplifier.audio.volume.node);
+    amplifier.audio.input.streamSource.connect(amplifier.audio.getFirstNode());
   }
 };
 
@@ -264,7 +270,7 @@ amplifier.audio.input.connect = function() {
  */
 amplifier.audio.input.successCallback = function(stream) {
   amplifier.audio.input.streamSource = amplifier.audio.context.createMediaStreamSource(stream);
-  amplifier.audio.input.streamSource.connect(amplifier.audio.volume.node);
+  amplifier.audio.input.streamSource.connect(amplifier.audio.getFirstNode());
 };
 
 
@@ -412,8 +418,12 @@ amplifier.audio.LowPass = function() {
 
 /** @override */
 amplifier.audio.LowPass.prototype.setValue = function(newValue) {
-  // Frequencies mapped as roughly [0.0 - 1.0] -> [20 - 12k].
-  var computedValue = 20 + Math.pow(newValue * 10.0, 5.1 - newValue);
+  // 8-string guitars range from F#1 (46Hz) to E6 (1,319Hz).
+  // 6-string bass guitars range from B0 (31Hz) to C5 (523Hz).
+  // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
+  // Since perception of sound is logarithm, we must compensate it with an exponential growth on
+  // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
+  var computedValue = 31 + (1319 - 31) * Math.pow(newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
@@ -426,15 +436,16 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
  */
 amplifier.audio.BandStop = function() {
   amplifier.audio.Biquad.call(this, 'notch', 0);
+  this.node.frequency.value = (1319 - 31) * 0.5;
 }.inherits(amplifier.audio.Biquad);
 
 
 /** @override */
 amplifier.audio.BandStop.prototype.setValue = function(newValue) {
-  // TODO: Come back to this computation, this is incorrect for now.
-  var computedValue = 20 - newValue * 20;
+  // Since perception of sound is logarithm, we must compensate it with an exponential growth on
+  // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
+  var computedValue = 10 * Math.pow(newValue, 2);
   this.value = computedValue;
-  this.node.frequency.value = 2000;
   this.node.Q.value = computedValue;
 };
 
@@ -452,8 +463,12 @@ amplifier.audio.HighPass = function() {
 
 /** @override */
 amplifier.audio.HighPass.prototype.setValue = function(newValue) {
-  // Frequencies mapped as roughly [0.0 - 1.0] -> [12k - 20].
-  var computedValue = 12600 - Math.pow(newValue * 10.0, 5.1 - newValue);
+  // 8-string guitars range from F#1 (46Hz) to E6 (1,319Hz).
+  // 6-string bass guitars range from B0 (31Hz) to C5 (523Hz).
+  // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
+  // Since perception of sound is logarithm, we must compensate it with an exponential growth on
+  // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
+  var computedValue = 31 + (1319 - 31) * Math.pow(newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
@@ -493,7 +508,7 @@ amplifier.audio.Distortion.prototype.computeCurve_ = function() {
 
 /** @override */
 amplifier.audio.Distortion.prototype.setValue = function(newValue) {
-  var computedValue = Math.max(Math.min(newValue, 0.985), 0.005);
+  var computedValue = Math.max(Math.min(Math.pow(newValue, 2.0), 0.985), 0.0);
   amplifier.audio.Node.prototype.setValue.call(this, computedValue);
   this.computeCurve_();
 };
@@ -566,9 +581,9 @@ amplifier.ui.init = function() {
   var knobDelta = 150;
   amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 5, 0.0, 'VOLUME', 'VOLUME'));
   amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 3, 0.5, 'BASS', 'BASS'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 2, 0.6, 'MIDDLE', 'MIDDLE'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta, 0.8, 'TREBLE', 'TREBLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 3, 1.0, 'BASS', 'BASS'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 2, 1.0, 'MIDDLE', 'MIDDLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta, 1.0, 'TREBLE', 'TREBLE'));
   amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX, 0.4, 'REVERB', 'REVERB'));
   amplifier.ui.redraw();
 };
@@ -1143,6 +1158,8 @@ amplifier.ui.Knob = function(x, value, id, label) {
    * @private
    */
   this.skipClick_ = false;
+
+  this.setValue(this.value_);
 };
 
 
