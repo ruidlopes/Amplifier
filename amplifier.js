@@ -608,14 +608,13 @@ amplifier.ui.init = function() {
   amplifier.ui.switches_.push(new amplifier.ui.Switch(switchX, 'POWER', ['POWER', 'ON']));
   amplifier.ui.switches_.push(new amplifier.ui.Switch(switchX + 150, 'SOUND', ['STANDBY', 'ON']));
 
-  var knobX = amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50;
   var knobDelta = 150;
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 5, 0.0, 'VOLUME', 'VOLUME'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 3, 1.0, 'BASS', 'BASS'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta * 2, 1.0, 'MIDDLE', 'MIDDLE'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX - knobDelta, 1.0, 'TREBLE', 'TREBLE'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(knobX, 0.4, 'REVERB', 'REVERB'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 5, 0.0, 'VOLUME', 'VOLUME'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 3, 1.0, 'BASS', 'BASS'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 2, 1.0, 'MIDDLE', 'MIDDLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta, 1.0, 'TREBLE', 'TREBLE'));
+  amplifier.ui.knobs_.push(new amplifier.ui.Knob(0.0, 0.4, 'REVERB', 'REVERB'));
   amplifier.ui.redraw();
 };
 
@@ -1209,7 +1208,9 @@ amplifier.ui.Knob.prototype.setValue = function(newValue) {
  * Renders this knob.
  */
 amplifier.ui.Knob.prototype.render = function() {
-  var knobX = this.x_;
+  var knobX = this.x_ > 0 ?
+      this.x_ :
+      amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50 + this.x_;
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var knobRadius = 50;
   var angle = Math.PI * 0.75 + this.value_ * Math.PI * 1.5;
