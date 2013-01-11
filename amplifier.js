@@ -508,7 +508,7 @@ amplifier.audio.Distortion.prototype.computeCurve_ = function() {
 
 /** @override */
 amplifier.audio.Distortion.prototype.setValue = function(newValue) {
-  var computedValue = Math.max(Math.min(Math.pow(newValue, 2.0), 0.985), 0.0);
+  var computedValue = Math.max(Math.min(newValue, 0.985), 0.0);
   amplifier.audio.Node.prototype.setValue.call(this, computedValue);
   this.computeCurve_();
 };
