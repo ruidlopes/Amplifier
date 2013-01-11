@@ -63,6 +63,7 @@ lib.functions.FALSE = lib.functions.constant(false);
 namespace('amplifier.audio');
 namespace('amplifier.audio.BandStop');
 namespace('amplifier.audio.Biquad');
+namespace('amplifier.audio.Compressor');
 namespace('amplifier.audio.Distortion');
 namespace('amplifier.audio.HighPass');
 namespace('amplifier.audio.LowPass');
@@ -99,6 +100,13 @@ amplifier.core.dispose = function() {
  * @type {AudioContext}
  */
 amplifier.audio.context;
+
+
+/**
+ * The compressor node.  This node is not controllable by the user.  Its sole purpose is to act as
+ * noise reduction.
+ */
+amplifier.audio.compressor = null;
 
 
 /**
@@ -162,13 +170,15 @@ amplifier.audio.chainNodes = function() {
  * Initializes all audio nodes.
  */
 amplifier.audio.initNodes = function() {
-  amplifier.audio.volume = new amplifier.audio.Volume();
+  amplifier.audio.compressor = new amplifier.audio.Compressor();
   amplifier.audio.distortion = new amplifier.audio.Distortion();
+  amplifier.audio.volume = new amplifier.audio.Volume();
   amplifier.audio.bass = new amplifier.audio.HighPass();
   amplifier.audio.middle = new amplifier.audio.BandStop();
   amplifier.audio.treble = new amplifier.audio.LowPass();
 
   amplifier.audio.chainNodes(
+      amplifier.audio.compressor.node,
       amplifier.audio.distortion.node,
       amplifier.audio.volume.node,
       amplifier.audio.bass.node,
@@ -182,7 +192,7 @@ amplifier.audio.initNodes = function() {
 /**
  */
 amplifier.audio.getFirstNode = function() {
-  return amplifier.audio.distortion.node;
+  return amplifier.audio.compressor.node;
 };
 
 /**
@@ -326,6 +336,18 @@ amplifier.audio.Node.prototype.setValue = function(newValue) {
 amplifier.audio.Node.prototype.getValue = function() {
   return this.value;
 };
+
+
+
+/**
+ * A compressor node.
+ * @constructor
+ * @extends {amplifier.audio.Node}
+ */
+amplifier.audio.Compressor = function() {
+  amplifier.audio.Node.call(
+      this, amplifier.audio.context.createDynamicsCompressor(), 0.0);
+}.inherits(amplifier.audio.Node);
 
 
 
