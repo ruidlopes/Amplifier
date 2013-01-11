@@ -446,7 +446,7 @@ amplifier.audio.BandStop = function() {
 amplifier.audio.BandStop.prototype.setValue = function(newValue) {
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var computedValue = 10 * Math.pow(newValue, 2);
+  var computedValue = 10 * Math.pow(0.1 + Math.min(0.9, newValue), 2);
   this.value = computedValue;
   this.node.Q.value = computedValue;
 };
