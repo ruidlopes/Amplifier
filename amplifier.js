@@ -381,8 +381,8 @@ amplifier.audio.Volume.AMPLIFICATION = 10;
  * Turns on the volume.
  */
 amplifier.audio.Volume.prototype.turnOn = function() {
-  this.node.gain.value = this.value;
   this.on = true;
+  this.setValue(this.value);
 };
 
 
@@ -390,18 +390,19 @@ amplifier.audio.Volume.prototype.turnOn = function() {
  * Turns off the volume.
  */
 amplifier.audio.Volume.prototype.turnOff = function() {
-  this.node.gain.value = 0.0;
   this.on = false;
+  this.setValue(this.value);
 };
 
 
 /** @override */
 amplifier.audio.Volume.prototype.setValue = function(newValue) {
-  amplifier.audio.Node.prototype.setValue.call(
-      this, newValue * amplifier.audio.Volume.AMPLIFICATION);
   if (this.on) {
     this.node.gain.value = newValue * amplifier.audio.Volume.AMPLIFICATION;
+  } else {
+    this.node.gain.value = 0.0;
   }
+  amplifier.audio.Node.prototype.setValue.call(this, newValue);
 };
 
 
@@ -421,9 +422,9 @@ amplifier.audio.Biquad = function(type, frequency) {
 
 
 /** @override */
-amplifier.audio.Biquad.prototype.setValue = function(newValue) {
+amplifier.audio.Biquad.prototype.setValue = function(newValue, computedValue) {
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
-  this.node.frequency.value = newValue;
+  this.node.frequency.value = computedValue;
 };
 
 
@@ -448,7 +449,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
   var min = 650;
   var max = 1319;
   var computedValue = min + (max - min) * Math.pow(newValue, 2);
-  amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
+  amplifier.audio.Biquad.prototype.setValue.call(this, newValue, computedValue);
 };
 
 
@@ -469,7 +470,7 @@ amplifier.audio.BandStop.prototype.setValue = function(newValue) {
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
   var computedValue = 10 * Math.pow(0.1 + Math.min(0.9, newValue), 2);
-  this.value = computedValue;
+  this.value = newValue;
   this.node.Q.value = computedValue;
 };
 
@@ -495,7 +496,7 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
   var min = 31;
   var max = 650;
   var computedValue = min + (max - min) * Math.pow(1.0 - newValue, 2);
-  amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
+  amplifier.audio.Biquad.prototype.setValue.call(this, newValue, computedValue);
 };
 
 
@@ -506,9 +507,11 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
  * @extends {amplifier.audio.Node}
  */
 amplifier.audio.Distortion = function() {
-  amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper(), 0);
+  amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper(), 0.0);
   this.curve = new Float32Array(amplifier.audio.Distortion.SAMPLES);
   this.node.curve = this.curve;
+
+  this.distortion = 0.0;
 }.inherits(amplifier.audio.Node);
 
 
@@ -524,7 +527,7 @@ amplifier.audio.Distortion.SAMPLES = 2048;
  * @private
  */
 amplifier.audio.Distortion.prototype.computeCurve_ = function() {
-  var a = Math.sin(this.value * Math.PI * 0.5);
+  var a = Math.sin(this.distortion * Math.PI * 0.5);
   var k = 2 * a / (1 - a);
   for (var i = 0; i < amplifier.audio.Distortion.SAMPLES; ++i) {
     var x = (i - 0) * (1 - (-1)) / (amplifier.audio.Distortion.SAMPLES - 0) + (-1);
@@ -536,8 +539,9 @@ amplifier.audio.Distortion.prototype.computeCurve_ = function() {
 /** @override */
 amplifier.audio.Distortion.prototype.setValue = function(newValue) {
   var computedValue = Math.max(Math.min(newValue, 0.985), 0.0);
-  amplifier.audio.Node.prototype.setValue.call(this, computedValue);
+  this.distortion = computedValue;
   this.computeCurve_();
+  amplifier.audio.Node.prototype.setValue.call(this, newValue);
 };
 
 
