@@ -170,10 +170,10 @@ amplifier.audio.initNodes = function() {
 
   amplifier.audio.chainNodes(
       amplifier.audio.distortion.node,
+      amplifier.audio.volume.node,
       amplifier.audio.bass.node,
       amplifier.audio.middle.node,
       amplifier.audio.treble.node,
-      amplifier.audio.volume.node,
       amplifier.audio.context.destination
   );
 };
@@ -394,7 +394,7 @@ amplifier.audio.Volume.prototype.setValue = function(newValue) {
 amplifier.audio.Biquad = function(type, frequency) {
   amplifier.audio.Node.call(
       this, amplifier.audio.context.createBiquadFilter(), frequency);
-  this.node.type = type;
+  this.node.type = this.node[type.toUpperCase()];
 }.inherits(amplifier.audio.Node);
 
 
@@ -424,7 +424,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
   var min = 650;
-  var max = 22000;
+  var max = 1319;
   var computedValue = min + (max - min) * Math.pow(newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
@@ -470,9 +470,9 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
   // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var min = 30;
-  var max = 22000;
-  var computedValue = min + (max - min) * Math.pow(newValue, 2);
+  var min = 31;
+  var max = 650;
+  var computedValue = min + (max - min) * Math.pow(1.0 - newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
