@@ -423,7 +423,9 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
   // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var computedValue = 31 + (1319 - 31) * Math.pow(newValue, 2);
+  var min = 650;
+  var max = 22000;
+  var computedValue = min + (max - min) * Math.pow(newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
@@ -468,7 +470,9 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
   // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var computedValue = 31 + (1319 - 31) * Math.pow(newValue, 2);
+  var min = 30;
+  var max = 22000;
+  var computedValue = min + (max - min) * Math.pow(newValue, 2);
   amplifier.audio.Biquad.prototype.setValue.call(this, computedValue);
 };
 
@@ -498,7 +502,8 @@ amplifier.audio.Distortion.SAMPLES = 2048;
  * @private
  */
 amplifier.audio.Distortion.prototype.computeCurve_ = function() {
-  var k = 2 * this.value / (1 - this.value);
+  var a = Math.sin(this.value * Math.PI * 0.5);
+  var k = 2 * a / (1 - a);
   for (var i = 0; i < amplifier.audio.Distortion.SAMPLES; ++i) {
     var x = (i - 0) * (1 - (-1)) / (amplifier.audio.Distortion.SAMPLES - 0) + (-1);
     this.curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
