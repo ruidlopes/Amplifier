@@ -68,6 +68,7 @@ namespace('amplifier.audio.Distortion');
 namespace('amplifier.audio.HighPass');
 namespace('amplifier.audio.LowPass');
 namespace('amplifier.audio.Node');
+namespace('amplifier.audio.Reverb');
 namespace('amplifier.audio.Volume');
 namespace('amplifier.audio.input');
 namespace('amplifier.core');
@@ -145,6 +146,13 @@ amplifier.audio.distortion = null;
 
 
 /**
+ * The reverb node.
+ * @type {amplifier.audio.Reverb}
+ */
+amplifier.audio.reverb = null;
+
+
+/**
  * Initializes audio.
  */
 amplifier.audio.init = function() {
@@ -176,6 +184,7 @@ amplifier.audio.initNodes = function() {
   amplifier.audio.bass = new amplifier.audio.HighPass();
   amplifier.audio.middle = new amplifier.audio.BandStop();
   amplifier.audio.treble = new amplifier.audio.LowPass();
+  amplifier.audio.reverb = new amplifier.audio.Reverb();
 
   amplifier.audio.chainNodes(
       amplifier.audio.compressor.node,
@@ -184,6 +193,7 @@ amplifier.audio.initNodes = function() {
       amplifier.audio.bass.node,
       amplifier.audio.middle.node,
       amplifier.audio.treble.node,
+      amplifier.audio.reverb.node,
       amplifier.audio.context.destination
   );
 };
@@ -218,7 +228,8 @@ amplifier.audio.bindListeners = function() {
     'DISTORTION': bindSetValue(amplifier.audio.distortion),
     'BASS': bindSetValue(amplifier.audio.bass),
     'MIDDLE': bindSetValue(amplifier.audio.middle),
-    'TREBLE': bindSetValue(amplifier.audio.treble)
+    'TREBLE': bindSetValue(amplifier.audio.treble),
+    'REVERB': bindSetValue(amplifier.audio.reverb)
   };
   lib.msg.listen('KNOB_VALUE', function(id, value) {
     if (knobListeners[id]) {
@@ -542,6 +553,43 @@ amplifier.audio.Distortion.prototype.setValue = function(newValue) {
   this.distortion = computedValue;
   this.computeCurve_();
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
+};
+
+
+
+/**
+ * @constructor
+ */
+amplifier.audio.Reverb = function() {
+  amplifier.audio.Node.call(
+      this,
+      amplifier.audio.context.createScriptProcessor(amplifier.audio.Reverb.BUFFER_SIZE_, 1, 1),
+      0.0);
+  this.node.onaudioprocess = this.process_;
+}.inherits(amplifier.audio.Node);
+
+
+/**
+ * Reverb buffer size.
+ * @type {number}
+ * @private
+ * @const
+ */
+amplifier.audio.Reverb.BUFFER_SIZE_ = 512;  // 1024 has E_TOO_MUCH_LATENCY!!!!!
+
+
+/**
+ * Processes an audio event.
+ * @param {!AudioProcessingEvent} event The event triggered by the script processor.
+ * @private
+ */
+amplifier.audio.Reverb.prototype.process_ = function(event) {
+  var inputData = event.inputBuffer.getChannelData(0);
+  var outputData = event.outputBuffer.getChannelData(0);
+  for (var i = 0; i < event.inputBuffer.length; ++i) {
+    // Dummy copy for now.
+    outputData[i] = inputData[i];
+  }
 };
 
 
