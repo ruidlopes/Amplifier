@@ -1407,6 +1407,63 @@ amplifier.config.DEFAULT = {
  */
 amplifier.config.init = function() {
   amplifier.config.load(amplifier.config.DEFAULT);
+  amplifier.config.bindDragAndDrop();
+};
+
+
+/**
+ * Binds drag and drop events.
+ */
+amplifier.config.bindDragAndDrop = function() {
+  var canvas = document.getElementById('amplifier-canvas');
+  canvas.addEventListener('dragover', amplifier.config.handleDragOver, false);
+  canvas.addEventListener('drop', amplifier.config.handleDrop, false);
+};
+
+
+/**
+ * Handles drag over event.
+ * @param {!Event} event The drag over event.
+ */
+amplifier.config.handleDragOver = function(event) {
+  event.stopPropagation();
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+};
+
+
+/**
+ * Handles drop event.
+ * @param {!Event} event The drop event.
+ */
+amplifier.config.handleDrop = function(event) {
+  event.stopPropagation();
+  event.preventDefault();
+
+  var files = event.dataTransfer.files;
+  if (files.length < 1) {
+    return;
+  }
+
+  var configFile = files[0];
+  if (!configFile.name.match(/.+\.amplifier$/)) {
+    return;
+  }
+
+  var configReader = new FileReader();
+  configReader.onload = amplifier.config.readFile;
+  configReader.readAsText(configFile);
+};
+
+
+/**
+ * Reads a config file.
+ * @param {!Event} event The file read event.
+ */
+amplifier.config.readFile = function(event) {
+  var fileContent = event.target.result;
+  var config = JSON.parse(fileContent);
+  amplifier.config.load(config);
 };
 
 
