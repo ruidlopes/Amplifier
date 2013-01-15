@@ -71,6 +71,8 @@ namespace('amplifier.audio.Node');
 namespace('amplifier.audio.Reverb');
 namespace('amplifier.audio.Volume');
 namespace('amplifier.audio.input');
+namespace('amplifier.config');
+namespace('amplifier.config.Config');
 namespace('amplifier.core');
 namespace('amplifier.ui');
 namespace('amplifier.ui.Knob');
@@ -86,6 +88,7 @@ namespace('amplifier.ui.events');
 amplifier.core.init = function() {
   amplifier.audio.init();
   amplifier.ui.init();
+  amplifier.config.init();
 };
 
 
@@ -636,10 +639,10 @@ amplifier.ui.switches_ = [];
 
 /**
  * The UI knobs.
- * @type {!Array.<!amplifier.ui.Knob>}
+ * @type {!Object.<string, !amplifier.ui.Knob>}
  * @private
  */
-amplifier.ui.knobs_ = [];
+amplifier.ui.knobs_ = {};
 
 
 /**
@@ -657,13 +660,23 @@ amplifier.ui.init = function() {
   amplifier.ui.switches_.push(new amplifier.ui.Switch(switchX + 150, 'SOUND', ['STANDBY', 'ON']));
 
   var knobDelta = 150;
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 5, 0.0, 'VOLUME', 'VOLUME'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 3, 1.0, 'BASS', 'BASS'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta * 2, 1.0, 'MIDDLE', 'MIDDLE'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(-knobDelta, 1.0, 'TREBLE', 'TREBLE'));
-  amplifier.ui.knobs_.push(new amplifier.ui.Knob(0.0, 0.4, 'REVERB', 'REVERB'));
+  amplifier.ui.knobs_.volume = new amplifier.ui.Knob(-knobDelta * 5, 0.0, 'VOLUME', 'VOLUME');
+  amplifier.ui.knobs_.distortion = new amplifier.ui.Knob(-knobDelta * 4, 1.0, 'DISTORTION', 'DISTORTION');
+  amplifier.ui.knobs_.bass = new amplifier.ui.Knob(-knobDelta * 3, 1.0, 'BASS', 'BASS');
+  amplifier.ui.knobs_.middle = new amplifier.ui.Knob(-knobDelta * 2, 1.0, 'MIDDLE', 'MIDDLE');
+  amplifier.ui.knobs_.treble = new amplifier.ui.Knob(-knobDelta, 1.0, 'TREBLE', 'TREBLE');
+  amplifier.ui.knobs_.reverb = new amplifier.ui.Knob(0.0, 0.4, 'REVERB', 'REVERB');
   amplifier.ui.redraw();
+};
+
+
+/**
+ * Gets a knob by its name.
+ * @param {string} knobName The knob name to be looked for.
+ * @return {!amplifier.ui.Knob} The knob.
+ */
+amplifier.ui.getKnob = function(knobName) {
+  return amplifier.ui.knobs_[knobName];
 };
 
 
@@ -798,11 +811,8 @@ amplifier.ui.redrawSwitches = function() {
  * Redraws all amplifier knobs.
  */
 amplifier.ui.redrawKnobs = function() {
-  var knobX = amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50;
-  var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
-  var knobDelta = 150;
-  for (var i = 0; i < amplifier.ui.knobs_.length; ++i) {
-    amplifier.ui.knobs_[i].render();
+  for (var knobName in amplifier.ui.knobs_) {
+    amplifier.ui.knobs_[knobName].render();
   }
 };
 
@@ -1360,6 +1370,57 @@ amplifier.ui.Knob.prototype.handleMouseMove = function(event) {
 
   var value = this.mouseDownValue_ + (this.mouseDownY_ - event.clientY) / 200;
   this.setValue(value);
+};
+
+
+/**
+ * An Amplifier configuration type.
+ * @typedef {
+ *   volume: number,
+ *   distortion: number,
+ *   bass: number,
+ *   middle: number,
+ *   treble: number,
+ *   reverb: number
+ * }
+ */
+amplifier.config.Config;
+
+
+/**
+ * The default Amplifier configuration.
+ * @type {!amplifier.config.Config}
+ * @const
+ */
+amplifier.config.DEFAULT = {
+  volume: 0.3,
+  distortion: 0.6,
+  bass: 0.4,
+  middle: 0.7,
+  treble: 0.9,
+  reverb: 0.4
+};
+
+
+/**
+ * Initializes the Amplifier configuration (i.e., knob positions).
+ */
+amplifier.config.init = function() {
+  amplifier.config.load(amplifier.config.DEFAULT);
+};
+
+
+/**
+ * Loads an Amplifier configuration.
+ * @param {!amplifier.config.Config} config The configuration to be loaded.
+ */
+amplifier.config.load = function(config) {
+  amplifier.ui.getKnob('volume').setValue(config.volume);
+  amplifier.ui.getKnob('distortion').setValue(config.distortion);
+  amplifier.ui.getKnob('bass').setValue(config.bass);
+  amplifier.ui.getKnob('middle').setValue(config.middle);
+  amplifier.ui.getKnob('treble').setValue(config.treble);
+  amplifier.ui.getKnob('reverb').setValue(config.reverb);
 };
 
 
