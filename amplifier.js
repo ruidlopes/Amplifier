@@ -1205,12 +1205,20 @@ amplifier.ui.Knob.prototype.setValue = function(newValue) {
 
 
 /**
+ * Computes the X position for this knob.
+ * @return {number} The computed X position.
+ */
+amplifier.ui.Knob.prototype.computeX = function() {
+  return this.x_ > 0 ?
+      this.x_ :
+      amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50 + this.x_;
+};
+
+/**
  * Renders this knob.
  */
 amplifier.ui.Knob.prototype.render = function() {
-  var knobX = this.x_ > 0 ?
-      this.x_ :
-      amplifier.ui.canvas.width - amplifier.ui.constants.borderSize * 2 - 50 + this.x_;
+  var knobX = this.computeX();
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var knobRadius = 50;
   var angle = Math.PI * 0.75 + this.value_ * Math.PI * 1.5;
@@ -1248,7 +1256,7 @@ amplifier.ui.Knob.prototype.render = function() {
  * @return {boolean} If position within this knob.
  */
 amplifier.ui.Knob.prototype.isWithin = function(x, y) {
-  var knobX = this.x_;
+  var knobX = this.computeX();
   var knobY = amplifier.ui.canvas.height - amplifier.ui.constants.controlsHeight + 100;
   var knobRadius = 50;
   var xx = knobX - x;
