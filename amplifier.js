@@ -316,6 +316,7 @@ amplifier.audio.input.successCallback = function(stream) {
  */
 amplifier.audio.input.errorCallback = function() {
   lib.msg.send('SWITCH_FAILURE', 'POWER');
+  amplifier.core.error('Unauthorized access to microphone');
 };
 
 
