@@ -100,6 +100,17 @@ amplifier.core.dispose = function() {
 
 
 /**
+ * Handles an error.
+ * @param {string} message The error message.
+ */
+amplifier.core.error = function(message) {
+  // For now, just throw it.
+  // TODO(ruidlopes): Display a message in the UI.
+  throw Error(message);
+};
+
+
+/**
  * The WebAudio context.
  * @type {AudioContext}
  */
@@ -1446,13 +1457,48 @@ amplifier.config.handleDrop = function(event) {
   }
 
   var configFile = files[0];
-  if (!configFile.name.match(/.+\.amplifier$/)) {
+  if (!configFile || !configFile.name || !configFile.name.match(/.+\.amplifier$/)) {
+    amplifier.core.error('Invalid configuration file (should end in .amplifier)');
     return;
   }
 
   var configReader = new FileReader();
   configReader.onload = amplifier.config.readFile;
   configReader.readAsText(configFile);
+};
+
+
+/**
+ * Validates a configuration field.  If it is invalid, an exception is thrown.
+ * @private
+ */
+amplifier.config.validateField_ = function(configField) {
+  if (typeof configField != 'number') {
+    throw new Error();
+  }
+};
+
+
+/**
+ * Parses and validates the content of a configuration file.
+ * @param {string} fileContent The content of the configuration file
+ * @return {!amplifier.config.Config} A configuration object, if the file contents are valid.
+ *     Otherwise an exception is thrown.
+ */
+amplifier.config.validate = function(fileContent) {
+  var config;
+  try {
+    config = /** @type {!amplifier.config.Config} */(JSON.parse(fileContent));
+    amplifier.config.validateField_(config.volume);
+    amplifier.config.validateField_(config.distortion);
+    amplifier.config.validateField_(config.bass);
+    amplifier.config.validateField_(config.middle);
+    amplifier.config.validateField_(config.treble);
+    amplifier.config.validateField_(config.reverb);
+  } catch (e) {
+    amplifier.core.error('Invalid configuration');
+  }
+  return config;
 };
 
 
