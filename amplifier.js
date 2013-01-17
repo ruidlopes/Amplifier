@@ -192,7 +192,8 @@ amplifier.audio.chainNodes = function() {
  * Initializes all audio nodes.
  */
 amplifier.audio.initNodes = function() {
-  amplifier.audio.compressor = new amplifier.audio.Compressor();
+  amplifier.audio.compressor1 = new amplifier.audio.Compressor();
+  amplifier.audio.compressor2 = new amplifier.audio.Compressor();
   amplifier.audio.distortion = new amplifier.audio.Distortion();
   amplifier.audio.volume = new amplifier.audio.Volume();
   amplifier.audio.bass = new amplifier.audio.HighPass();
@@ -201,12 +202,13 @@ amplifier.audio.initNodes = function() {
   amplifier.audio.reverb = new amplifier.audio.Reverb();
 
   amplifier.audio.chainNodes(
-      amplifier.audio.compressor.node,
+      amplifier.audio.compressor1.node,
       amplifier.audio.distortion.node,
       amplifier.audio.volume.node,
       amplifier.audio.bass.node,
       amplifier.audio.middle.node,
       amplifier.audio.treble.node,
+      amplifier.audio.compressor2.node,
       amplifier.audio.reverb.node,
       amplifier.audio.context.destination
   );
@@ -216,7 +218,7 @@ amplifier.audio.initNodes = function() {
 /**
  */
 amplifier.audio.getFirstNode = function() {
-  return amplifier.audio.compressor.node;
+  return amplifier.audio.compressor1.node;
 };
 
 /**
