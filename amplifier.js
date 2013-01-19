@@ -1499,7 +1499,8 @@ amplifier.config.validate = function(fileContent) {
     amplifier.config.validateField_(config.treble);
     amplifier.config.validateField_(config.reverb);
   } catch (e) {
-    amplifier.core.error('Invalid configuration');
+    // Rethrow, as it'll be handled later.
+    throw e;
   }
   return config;
 };
@@ -1511,8 +1512,12 @@ amplifier.config.validate = function(fileContent) {
  */
 amplifier.config.readFile = function(event) {
   var fileContent = event.target.result;
-  var config = JSON.parse(fileContent);
-  amplifier.config.load(config);
+  try {
+    var config = amplifier.config.validate(fileConfig);
+    amplifier.config.load(config);
+  } catch (e) {
+    amplifier.core.error('Invalid configuration');
+  }
 };
 
 
