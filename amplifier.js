@@ -213,6 +213,11 @@ amplifier.audio.initNodes = function() {
 
   amplifier.audio.compressor2.getOutput().connect(
       amplifier.audio.context.destination);
+
+  // The reverb works in parallel.
+  amplifier.audio.reverb.connect(
+      amplifier.audio.compressor2.getOutput(),
+      amplifier.audio.context.destination);
 };
 
 
@@ -391,8 +396,7 @@ amplifier.audio.Node.prototype.getValue = function() {
  * @extends {amplifier.audio.Node}
  */
 amplifier.audio.Compressor = function() {
-  amplifier.audio.Node.call(
-      this, amplifier.audio.context.createDynamicsCompressor(), 0.0);
+  amplifier.audio.Node.call(this, amplifier.audio.context.createDynamicsCompressor());
 }.inherits(amplifier.audio.Node);
 
 
@@ -403,8 +407,7 @@ amplifier.audio.Compressor = function() {
  * @extends {amplifier.audio.Node}
  */
 amplifier.audio.Volume = function() {
-  amplifier.audio.Node.call(
-      this, amplifier.audio.context.createGain(), 0.0);
+  amplifier.audio.Node.call(this, amplifier.audio.context.createGain());
 
   /**
    * @type {boolean}
@@ -456,13 +459,11 @@ amplifier.audio.Volume.prototype.setValue = function(newValue) {
 /**
  * A generic biquad filter.
  * @param {string} type The biquad filter type (as per WebAudio API).
- * @param {number} frequency The base frequency.
  * @constructor
  * @extends {amplifier.audio.Node}
  */
-amplifier.audio.Biquad = function(type, frequency) {
-  amplifier.audio.Node.call(
-      this, amplifier.audio.context.createBiquadFilter(), frequency);
+amplifier.audio.Biquad = function(type) {
+  amplifier.audio.Node.call(this, amplifier.audio.context.createBiquadFilter());
   this.node_.type = this.node_[type.toUpperCase()];
 }.inherits(amplifier.audio.Node);
 
@@ -481,7 +482,7 @@ amplifier.audio.Biquad.prototype.setValue = function(newValue, computedValue) {
  * @extends {amplifier.audio.Biquad}
  */
 amplifier.audio.LowPass = function() {
-  amplifier.audio.Biquad.call(this, 'lowpass', 0);
+  amplifier.audio.Biquad.call(this, 'lowpass');
 }.inherits(amplifier.audio.Biquad);
 
 
@@ -506,7 +507,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
  * @extends {amplifier.audio.Biquad}
  */
 amplifier.audio.BandStop = function() {
-  amplifier.audio.Biquad.call(this, 'notch', 0);
+  amplifier.audio.Biquad.call(this, 'notch');
   this.node_.frequency.value = (1319 - 31) * 0.5;
 }.inherits(amplifier.audio.Biquad);
 
@@ -528,7 +529,7 @@ amplifier.audio.BandStop.prototype.setValue = function(newValue) {
  * @extends {amplifier.audio.Biquad}
  */
 amplifier.audio.HighPass = function() {
-  amplifier.audio.Biquad.call(this, 'highpass', 0);
+  amplifier.audio.Biquad.call(this, 'highpass');
 }.inherits(amplifier.audio.Biquad);
 
 
@@ -553,7 +554,7 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
  * @extends {amplifier.audio.Node}
  */
 amplifier.audio.Distortion = function() {
-  amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper(), 0.0);
+  amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper());
   this.curve = new Float32Array(amplifier.audio.Distortion.SAMPLES);
   this.node_.curve = this.curve;
 
@@ -596,35 +597,118 @@ amplifier.audio.Distortion.prototype.setValue = function(newValue) {
  * @constructor
  */
 amplifier.audio.Reverb = function() {
-  amplifier.audio.Node.call(
-      this,
-      amplifier.audio.context.createScriptProcessor(amplifier.audio.Reverb.BUFFER_SIZE_, 1, 1),
-      0.0);
-  this.node_.onaudioprocess = this.process_;
+  amplifier.audio.Node.call(this);
+
+  /**
+   * @type {!Array.<!Object>}
+   * @private
+   */
+  this.delays_ = amplifier.audio.Reverb.createDelayLine();
+
+  /**
+   * @type {!Array.<!Object>}
+   * @private
+   */
+  this.allPasses_ = amplifier.audio.Reverb.createAllPassLine();
 }.inherits(amplifier.audio.Node);
 
 
 /**
- * Reverb buffer size.
- * @type {number}
- * @private
- * @const
+ * Creates a gain node.
+ * @param {number} level The gain level.
+ * @return {!AudioNode} The gain node.
  */
-amplifier.audio.Reverb.BUFFER_SIZE_ = 512;  // 1024 has E_TOO_MUCH_LATENCY!!!!!
+amplifier.audio.Reverb.createGain = function(level) {
+  var node = amplifier.audio.context.createGain();
+  node.gain.value = level;
+  return node;
+};
 
 
 /**
- * Processes an audio event.
- * @param {!AudioProcessingEvent} event The event triggered by the script processor.
- * @private
+ * Creates a delay node.
+ * @param {number} time The delay time.
+ * @return {!{input: !AudioNode, output: !AudioNode}} The delay node.
  */
-amplifier.audio.Reverb.prototype.process_ = function(event) {
-  var inputData = event.inputBuffer.getChannelData(0);
-  var outputData = event.outputBuffer.getChannelData(0);
-  for (var i = 0; i < event.inputBuffer.length; ++i) {
-    // Dummy copy for now.
-    outputData[i] = inputData[i];
+amplifier.audio.Reverb.createDelay = function(time) {
+  var node = amplifier.audio.context.createDelay(2.0);  // Buffer a maximum of 2 seconds.
+  node.delayTime.value = time;
+  var gain = amplifier.audio.Reverb.createGain(1.2 - time);
+  node.connect(gain);
+  return {
+    input: node,
+    output: gain
+  };
+};
+
+
+/**
+ */
+amplifier.audio.Reverb.createAllPass = function(frequency) {
+  var node = amplifier.audio.context.createBiquadFilter();
+  node.type = node.ALLPASS;
+  node.frequency.value = frequency * 5.0;
+  node.Q.value = 1000.0;
+  var gain = amplifier.audio.Reverb.createGain(1.0);
+  node.connect(gain);
+  return {
+    input: node,
+    output: gain
+  };
+};
+
+
+amplifier.audio.Reverb.createDelayLine = function() {
+  return [
+    amplifier.audio.Reverb.createDelay(0.0),
+    amplifier.audio.Reverb.createDelay(0.116),
+    amplifier.audio.Reverb.createDelay(0.188),
+    amplifier.audio.Reverb.createDelay(0.277),
+    amplifier.audio.Reverb.createDelay(0.356),
+    amplifier.audio.Reverb.createDelay(0.422),
+    amplifier.audio.Reverb.createDelay(0.491),
+    amplifier.audio.Reverb.createDelay(0.557),
+    amplifier.audio.Reverb.createDelay(0.617),
+    amplifier.audio.Reverb.createDelay(0.800),
+    amplifier.audio.Reverb.createDelay(1.100)
+  ];
+};
+
+
+amplifier.audio.Reverb.createAllPassLine = function() {
+  return [
+    amplifier.audio.Reverb.createAllPass(225),
+    amplifier.audio.Reverb.createAllPass(556),
+    amplifier.audio.Reverb.createAllPass(441),
+    amplifier.audio.Reverb.createAllPass(341)
+  ];
+};
+
+
+amplifier.audio.Reverb.serial = function(nodes, output) {
+  for (var i = 0; i < nodes.length - 1; ++i) {
+    nodes[i].output.connect(nodes[i + 1].input);
   }
+  nodes[nodes.length - 1].output.connect(output);
+};
+
+
+amplifier.audio.Reverb.parallel = function(nodes, input, output) {
+  for (var i = 0; i < nodes.length; ++i) {
+    input.connect(nodes[i].input);
+    nodes[i].output.connect(output);
+  }
+};
+
+
+amplifier.audio.Reverb.prototype.connect = function(input, output) {
+  amplifier.audio.Reverb.parallel(this.delays_, input, this.allPasses_[0].input);
+  amplifier.audio.Reverb.serial(this.allPasses_, output);
+};
+
+
+amplifier.audio.Reverb.prototype.setValue = function(newValue) {
+  this.allPasses_[this.allPasses_.length - 1].output.gain.value = newValue;
 };
 
 
@@ -1425,12 +1509,12 @@ amplifier.config.Config;
  * @const
  */
 amplifier.config.DEFAULT = {
-  volume: 0.3,
-  distortion: 0.6,
+  volume: 0.4,
+  distortion: 0.4,
   bass: 0.4,
   middle: 0.7,
   treble: 0.9,
-  reverb: 0.4
+  reverb: 0.2
 };
 
 
