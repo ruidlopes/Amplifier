@@ -1513,7 +1513,7 @@ amplifier.config.validate = function(fileContent) {
 amplifier.config.readFile = function(event) {
   var fileContent = event.target.result;
   try {
-    var config = amplifier.config.validate(fileConfig);
+    var config = amplifier.config.validate(fileContent);
     amplifier.config.load(config);
   } catch (e) {
     amplifier.core.error('Invalid configuration');
