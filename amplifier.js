@@ -184,7 +184,7 @@ amplifier.audio.init = function() {
 amplifier.audio.chainNodes = function() {
   var nodes = arguments;
   for (var i = 0; i < nodes.length - 1; i++) {
-    nodes[i].connect(nodes[i + 1]);
+    nodes[i].getOutput().connect(nodes[i + 1].getInput());
   }
 };
 
@@ -202,23 +202,24 @@ amplifier.audio.initNodes = function() {
   amplifier.audio.reverb = new amplifier.audio.Reverb();
 
   amplifier.audio.chainNodes(
-      amplifier.audio.compressor1.node,
-      amplifier.audio.distortion.node,
-      amplifier.audio.volume.node,
-      amplifier.audio.bass.node,
-      amplifier.audio.middle.node,
-      amplifier.audio.treble.node,
-      amplifier.audio.compressor2.node,
-      amplifier.audio.reverb.node,
-      amplifier.audio.context.destination
+      amplifier.audio.compressor1,
+      amplifier.audio.distortion,
+      amplifier.audio.volume,
+      amplifier.audio.bass,
+      amplifier.audio.middle,
+      amplifier.audio.treble,
+      amplifier.audio.compressor2
   );
+
+  amplifier.audio.compressor2.getOutput().connect(
+      amplifier.audio.context.destination);
 };
 
 
 /**
  */
 amplifier.audio.getFirstNode = function() {
-  return amplifier.audio.compressor1.node;
+  return amplifier.audio.compressor1.getInput();
 };
 
 /**
@@ -331,20 +332,37 @@ amplifier.audio.input.disconnect = function() {
 
 /**
  * An audio node.
- * @param {!AudioNode} node The underlying WebAudio node.
- * @param {number} value The initial value for this node.
+ * @param {AudioNode} opt_node The underlying WebAudio node.
  * @constructor
  */
-amplifier.audio.Node = function(node, value) {
+amplifier.audio.Node = function(opt_node) {
   /**
-   * @type {!AudioNode}
+   * @type {AudioNode}
    */
-  this.node = node;
+  this.node_ = opt_node;
 
   /**
    * @type {number}
    */
-  this.value = value;
+  this.value = 0.0;
+};
+
+
+/**
+ * Gets the internal input audio node.
+ * @return {AudioNode} The input audio node.
+ */
+amplifier.audio.Node.prototype.getInput = function() {
+  return this.node_;
+};
+
+
+/**
+ * Gets the internal output audio node.
+ * @return {AudioNode} The output audio node.
+ */
+amplifier.audio.Node.prototype.getOutput = function() {
+  return this.node_;
 };
 
 
@@ -426,9 +444,9 @@ amplifier.audio.Volume.prototype.turnOff = function() {
 /** @override */
 amplifier.audio.Volume.prototype.setValue = function(newValue) {
   if (this.on) {
-    this.node.gain.value = newValue * amplifier.audio.Volume.AMPLIFICATION;
+    this.node_.gain.value = newValue * amplifier.audio.Volume.AMPLIFICATION;
   } else {
-    this.node.gain.value = 0.0;
+    this.node_.gain.value = 0.0;
   }
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
 };
@@ -445,14 +463,14 @@ amplifier.audio.Volume.prototype.setValue = function(newValue) {
 amplifier.audio.Biquad = function(type, frequency) {
   amplifier.audio.Node.call(
       this, amplifier.audio.context.createBiquadFilter(), frequency);
-  this.node.type = this.node[type.toUpperCase()];
+  this.node_.type = this.node_[type.toUpperCase()];
 }.inherits(amplifier.audio.Node);
 
 
 /** @override */
 amplifier.audio.Biquad.prototype.setValue = function(newValue, computedValue) {
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
-  this.node.frequency.value = computedValue;
+  this.node_.frequency.value = computedValue;
 };
 
 
@@ -489,7 +507,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
  */
 amplifier.audio.BandStop = function() {
   amplifier.audio.Biquad.call(this, 'notch', 0);
-  this.node.frequency.value = (1319 - 31) * 0.5;
+  this.node_.frequency.value = (1319 - 31) * 0.5;
 }.inherits(amplifier.audio.Biquad);
 
 
@@ -499,7 +517,7 @@ amplifier.audio.BandStop.prototype.setValue = function(newValue) {
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
   var computedValue = 10 * Math.pow(0.1 + Math.min(0.9, newValue), 2);
   this.value = newValue;
-  this.node.Q.value = computedValue;
+  this.node_.Q.value = computedValue;
 };
 
 
@@ -537,7 +555,7 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
 amplifier.audio.Distortion = function() {
   amplifier.audio.Node.call(this, amplifier.audio.context.createWaveShaper(), 0.0);
   this.curve = new Float32Array(amplifier.audio.Distortion.SAMPLES);
-  this.node.curve = this.curve;
+  this.node_.curve = this.curve;
 
   this.distortion = 0.0;
 }.inherits(amplifier.audio.Node);
@@ -582,7 +600,7 @@ amplifier.audio.Reverb = function() {
       this,
       amplifier.audio.context.createScriptProcessor(amplifier.audio.Reverb.BUFFER_SIZE_, 1, 1),
       0.0);
-  this.node.onaudioprocess = this.process_;
+  this.node_.onaudioprocess = this.process_;
 }.inherits(amplifier.audio.Node);
 
 
