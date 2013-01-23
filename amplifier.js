@@ -643,6 +643,9 @@ amplifier.audio.Reverb.createDelay = function(time) {
 
 
 /**
+ * Creates an allpass filter node.
+ * @param {number} frequency The allpass frequency.
+ * @retun {!{input: !AudioNode, output: !AudioNode}} The allpass node.
  */
 amplifier.audio.Reverb.createAllPass = function(frequency) {
   var node = amplifier.audio.context.createBiquadFilter();
@@ -658,6 +661,10 @@ amplifier.audio.Reverb.createAllPass = function(frequency) {
 };
 
 
+/**
+ * Creates a reverb delay line.
+ * @return {!Array} The delay line.
+ */
 amplifier.audio.Reverb.createDelayLine = function() {
   return [
     amplifier.audio.Reverb.createDelay(0.0),
@@ -675,6 +682,10 @@ amplifier.audio.Reverb.createDelayLine = function() {
 };
 
 
+/**
+ * Creates a reverb allpass line.
+ * @return {!Array} The allpass line.
+ */
 amplifier.audio.Reverb.createAllPassLine = function() {
   return [
     amplifier.audio.Reverb.createAllPass(225),
@@ -685,6 +696,11 @@ amplifier.audio.Reverb.createAllPassLine = function() {
 };
 
 
+/**
+ * Connects a set of nodes in sequence.
+ * @param {!Array} nodes The nodes to be connected.
+ * @param {!Object} output The final node to be connected.
+ */
 amplifier.audio.Reverb.serial = function(nodes, output) {
   for (var i = 0; i < nodes.length - 1; ++i) {
     nodes[i].output.connect(nodes[i + 1].input);
@@ -693,6 +709,12 @@ amplifier.audio.Reverb.serial = function(nodes, output) {
 };
 
 
+/**
+ * Connects a set of nodes in parallel.
+ * @param {!Array} nodes The nodes to be connected.
+ * @param {!Object} input The initial node to be connected.
+ * @param {!Object} output The final node to be connected.
+ */
 amplifier.audio.Reverb.parallel = function(nodes, input, output) {
   for (var i = 0; i < nodes.length; ++i) {
     input.connect(nodes[i].input);
@@ -701,12 +723,23 @@ amplifier.audio.Reverb.parallel = function(nodes, input, output) {
 };
 
 
+/**
+ * Connects all reverb lines between an input and an output, as follows:
+ *
+ *       / node \
+ * input - node - node - node - ... - output
+ *       \ .... /
+ *
+ * @param {!AudioNode} input The input node.
+ * @param {!AudioNode} output The output node.
+ */
 amplifier.audio.Reverb.prototype.connect = function(input, output) {
   amplifier.audio.Reverb.parallel(this.delays_, input, this.allPasses_[0].input);
   amplifier.audio.Reverb.serial(this.allPasses_, output);
 };
 
 
+/** @override */
 amplifier.audio.Reverb.prototype.setValue = function(newValue) {
   this.allPasses_[this.allPasses_.length - 1].output.gain.value = newValue;
 };
