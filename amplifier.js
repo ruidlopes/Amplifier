@@ -59,6 +59,15 @@ lib.functions.FALSE = lib.functions.constant(false);
 
 
 
+// Micro math library.
+namespace('lib.math');
+
+lib.math.clamp = function(value, min, max) {
+  return Math.max(Math.min(value, max), min);
+};
+
+
+
 // Amplifier namespaces.
 namespace('amplifier.audio');
 namespace('amplifier.audio.BandStop');
@@ -585,7 +594,7 @@ amplifier.audio.Distortion.prototype.computeCurve_ = function() {
 
 /** @override */
 amplifier.audio.Distortion.prototype.setValue = function(newValue) {
-  var computedValue = Math.max(Math.min(newValue, 0.985), 0.0);
+  var computedValue = lib.math.clamp(newValue, 0.0, 0.985);
   this.distortion = computedValue;
   this.computeCurve_();
   amplifier.audio.Node.prototype.setValue.call(this, newValue);
