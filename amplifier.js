@@ -53,7 +53,8 @@ lib.msg.send = function(msg) {
 namespace('lib.functions');
 
 lib.functions.constant = function(value) { return function() { return value; }; };
-lib.functions.EMPTY = lib.functions.constant(undefined);
+lib.functions.EMPTY = lib.functions.constant();
+lib.functions.NULL = lib.functions.constant(null);
 lib.functions.TRUE = lib.functions.constant(true);
 lib.functions.FALSE = lib.functions.constant(false);
 
@@ -64,6 +65,11 @@ namespace('lib.math');
 
 lib.math.clamp = function(value, min, max) {
   return Math.max(Math.min(value, max), min);
+};
+
+lib.math.map = function(value, initialInterval, finalInterval) {
+  return (finalInterval[1] - finalInterval[0]) *
+    value / (initialInterval[1] - initialInterval[0]);
 };
 
 
@@ -502,9 +508,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
   // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var min = 650;
-  var max = 1319;
-  var computedValue = min + (max - min) * Math.pow(newValue, 2);
+  var computedValue = lib.math.map(Math.pow(newValue, 2), [0, 1], [650, 1319]);
   amplifier.audio.Biquad.prototype.setValue.call(this, newValue, computedValue);
 };
 
@@ -517,7 +521,7 @@ amplifier.audio.LowPass.prototype.setValue = function(newValue) {
  */
 amplifier.audio.BandStop = function() {
   amplifier.audio.Biquad.call(this, 'notch');
-  this.node_.frequency.value = (1319 - 31) * 0.5;
+  this.node_.frequency.value = lib.math.map(0.5, [0, 1], [31, 1319]);
 }.inherits(amplifier.audio.Biquad);
 
 
@@ -549,9 +553,7 @@ amplifier.audio.HighPass.prototype.setValue = function(newValue) {
   // To support both ranges, filters should accommodate [0.0 - 1.0] to [31Hz - 1,319Hz].
   // Since perception of sound is logarithm, we must compensate it with an exponential growth on
   // the node value, so that a knob at 0.5 maps to twice the frequency cut if it were at 1.0.
-  var min = 31;
-  var max = 650;
-  var computedValue = min + (max - min) * Math.pow(1.0 - newValue, 2);
+  var computedValue = lib.math.map(Math.pow(1.0 - newValue, 2), [0, 1], [31, 650]);
   amplifier.audio.Biquad.prototype.setValue.call(this, newValue, computedValue);
 };
 
@@ -1414,7 +1416,7 @@ amplifier.ui.Knob = function(x, value, id, label) {
  * @param {number} newValue The new value to be set.
  */
 amplifier.ui.Knob.prototype.setValue = function(newValue) {
-  this.value_ = Math.max(0.0, Math.min(1.0, newValue));
+  this.value_ = lib.math.clamp(newValue, 0.0, 1.0);
   amplifier.ui.redraw();
   lib.msg.send('KNOB_VALUE', this.id_, this.value_);
 };
