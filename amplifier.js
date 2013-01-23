@@ -189,7 +189,7 @@ amplifier.audio.init = function() {
   if (audioContext) {
     amplifier.audio.context = new audioContext();
   } else {
-    throw Error('WebAudio API not implemented. Please use a modern browser.');
+    amplifier.core.error('WebAudio API not implemented. Please use a modern browser.');
   }
   amplifier.audio.initNodes();
   amplifier.audio.bindListeners();
