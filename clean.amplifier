@@ -1,0 +1,10 @@
+{
+  "creator": "Rui Lopes",
+  "version": "1.0",
+  "volume": 0.5,
+  "distortion": 0.1,
+  "bass": 0.3,
+  "middle": 0.7,
+  "treble": 0.9,
+  "reverb": 0.5
+}
